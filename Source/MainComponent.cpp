@@ -11,79 +11,101 @@ This file was auto-generated!
 
 #include "../JuceLibraryCode/JuceHeader.h"
 
-struct SineWaveSound : public SynthesiserSound
+#define ATTACK 'A' 
+#define DECAY 'D'
+#define SUSTAIN 'S'
+#define RELEASE 'R'
+
+
+struct FMSynthSound : public SynthesiserSound
 {
-    SineWaveSound() {}
+    FMSynthSound() {}
 
     bool appliesToNote(int /*midiNoteNumber*/) override { return true; }
     bool appliesToChannel(int /*midiChannel*/) override { return true; }
 };
 
 
-struct SineWaveVoice : public SynthesiserVoice
+struct FMSynthVoice : public SynthesiserVoice
 {
 
-    SineWaveVoice() : currentAngle(0), angleDelta(0), level(0), tailOff(0)
+    FMSynthVoice() : currentAngle(0), angleDelta(0), level(0), tailOff(0)
     {
     }
 
     bool canPlaySound(SynthesiserSound* sound) override
     {
-        return dynamic_cast<SineWaveSound*> (sound) != nullptr;
+        return dynamic_cast<FMSynthSound*> (sound) != nullptr;
     }
 
-    void startNote(int midiNoteNumber, float velocity,
+    void startNote(int midiNoteNumber, float /*velocity*/,
         SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
         currentAngle = 0.0;
-        level = velocity * 0.15;
+        level = 0;
         tailOff = 0.0;
-
+        state = ATTACK;
+        gainA = 0.00015;
+        gainD = 0.0004;
+        gainR = 0.00075;
+        targetA = 0.5;
+        targetD = 0.25;
         double cyclesPerSecond = MidiMessage::getMidiNoteInHertz(midiNoteNumber);
         double cyclesPerSample = cyclesPerSecond / getSampleRate();
 
         angleDelta = cyclesPerSample * 2.0 * double_Pi;
     }
 
-    void stopNote(float /*velocity*/, bool allowTailOff) override
+    void stopNote(float /*velocity*/, bool /*allowTailOff*/) override
     {
-        if (allowTailOff)
-        {
-            // start a tail-off by setting this flag. The render callback will pick up on
-            // this and do a fade out, calling clearCurrentNote() when it's finished.
-
-            if (tailOff == 0.0) // we only need to begin a tail-off if it's not already doing so - the
-                                // stopNote method could be called more than once.
-                tailOff = 1.0;
-        }
-        else
-        {
-            // we're being told to stop playing immediately, so reset everything..
-
-            clearCurrentNote();
-            angleDelta = 0.0;
-        }
+        state = RELEASE;
     }
 
     void pitchWheelMoved(int /*newValue*/) override
-    {
-        // can't be bothered implementing this for the demo!
+    {       
     }
 
     void controllerMoved(int /*controllerNumber*/, int /*newValue*/) override
     {
-        // not interested in controllers in this case.
+    }
+
+    void applyADSR()
+    {
+        switch (state)
+        {
+        case ATTACK: // Attack phase in the Envelope Generator
+            level = targetA*gainA + (1 - gainA)*level;
+            if (fabs(level-targetA) <= 0.01)
+            {
+                state = DECAY;
+            }
+            break;
+        case DECAY: // Decay phase in the Envelope Generator
+            level = targetD*gainD + (1 - gainD)*level;
+            if (fabs(level-targetD) <= 0.01)
+            {
+                state = SUSTAIN;
+            }
+            break;
+        case SUSTAIN: // Sustain phase in the Envelope Generator
+            break;
+        case RELEASE: // Release phase in the Envelope Generator
+            level = (1 - gainR)*level;
+            break;
+        }
     }
 
     void renderNextBlock(AudioSampleBuffer& outputBuffer, int startSample, int numSamples) override
     {
         if (angleDelta != 0.0)
         {
-            if (tailOff > 0)
+            if (state == RELEASE)
             {
                 while (--numSamples >= 0)
                 {
-                    const float currentSample = (float)(std::sin(currentAngle) * level * tailOff);
+                    printf("level: %f\n",level);
+                    applyADSR();
+                    const float currentSample = (float)(std::sin(currentAngle) * level);
 
                     for (int i = outputBuffer.getNumChannels(); --i >= 0;)
                         outputBuffer.addSample(i, startSample, currentSample);
@@ -91,12 +113,9 @@ struct SineWaveVoice : public SynthesiserVoice
                     currentAngle += angleDelta;
                     ++startSample;
 
-                    tailOff *= 0.99;
-
-                    if (tailOff <= 0.005)
+                    if (level <= 0.005)
                     {
                         clearCurrentNote();
-
                         angleDelta = 0.0;
                         break;
                     }
@@ -106,6 +125,8 @@ struct SineWaveVoice : public SynthesiserVoice
             {
                 while (--numSamples >= 0)
                 {
+                    applyADSR();
+                    
                     const float currentSample = (float)(std::sin(currentAngle) * level);
 
                     for (int i = outputBuffer.getNumChannels(); --i >= 0;)
@@ -119,7 +140,8 @@ struct SineWaveVoice : public SynthesiserVoice
     }
 
 private:
-    double currentAngle, angleDelta, level, tailOff;
+    double currentAngle, angleDelta, level, tailOff, gainA, gainD, gainR, targetA, targetD;
+    char state;
 };
 //==============================================================================
 /*
@@ -175,17 +197,17 @@ public:
         midiMessagesBox.setColour(TextEditor::backgroundColourId, Colour(0x32ffffff));
         midiMessagesBox.setColour(TextEditor::outlineColourId, Colour(0x1c000000));
         midiMessagesBox.setColour(TextEditor::shadowColourId, Colour(0x16000000));
+        
         for (int i = 4; --i >= 0;)
         {
-            synth.addVoice(new SineWaveVoice());   // These voices will play our custom sine-wave sounds..
+            synth.addVoice(new FMSynthVoice());   // Add voices for the synth
         }
         synth.clearSounds();
-        synth.addSound(new SineWaveSound());
+        synth.addSound(new FMSynthSound()); // Add the sound for synth
 
         setSize(800, 600);
 
-        // specify the number of input and output channels that we want to open
-        setAudioChannels(2, 2);
+        setAudioChannels(2, 2); // specify number of input and output channels
     }
 
     ~MainContentComponent()
@@ -227,10 +249,7 @@ public:
     //==============================================================================
     void paint(Graphics& g) override
     {
-        // (Our component is opaque, so we must completely fill the background with a solid colour)
         g.fillAll(Colours::grey);
-
-
         // You can add your drawing code here!
     }
 
