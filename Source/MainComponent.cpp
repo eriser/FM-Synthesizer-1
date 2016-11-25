@@ -11,11 +11,16 @@ This file was auto-generated!
 
 #include "../JuceLibraryCode/JuceHeader.h"
 
+// ADSR constants
 #define ATTACK 'A' 
 #define DECAY 'D'
 #define SUSTAIN 'S'
 #define RELEASE 'R'
 
+// Waveform constants
+#define SINE 0
+#define SAW 1
+#define TRIANGLE 2
 
 struct FMSynthSound : public SynthesiserSound
 {
@@ -31,7 +36,13 @@ struct FMSynthVoice : public SynthesiserVoice
 
     FMSynthVoice() : currentAngle(0), angleDelta(0), level(0)
     {
-        model = 3;
+        waveform = SINE; // Waveform model
+        model = 3; // Algorithm model
+        gainA = { 0.075,0.00025,0.000104,0.00087 };
+        gainD = { 0.07,0.006,0.00024,0.00054 };
+        gainR = { 0.00075,0.00005,0.000035,0.00005 };
+        targetA = { 0.7,0.9,0.8,1.5 };
+        targetD = { 0.7,0.8,0.3,1.5 };
     }
 
     bool canPlaySound(SynthesiserSound* sound) override
@@ -43,94 +54,111 @@ struct FMSynthVoice : public SynthesiserVoice
         SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
         currentAngle = 0.0;
-        level = 0;
-        state = ATTACK;
-        gainA = 0.00015;
-        gainD = 0.0004;
-        gainR = 0.00075;
-        targetA = 0.5;
-        targetD = 0.25;
+        level = { 0,0,0,0 };
+        state = { ATTACK,ATTACK,ATTACK,ATTACK };
         double cyclesPerSecond = MidiMessage::getMidiNoteInHertz(midiNoteNumber);
         double cyclesPerSample = cyclesPerSecond / getSampleRate();
-
         angleDelta = cyclesPerSample * 2.0 * double_Pi;
-        printf("%f\n",angleDelta);
+        printf("sample:%f\n", angleDelta);
     }
 
     void stopNote(float /*velocity*/, bool /*allowTailOff*/) override
     {
-        state = RELEASE;
+        state = { RELEASE,RELEASE,RELEASE,RELEASE };
     }
 
     void pitchWheelMoved(int /*newValue*/) override
-    {       
+    {
     }
 
     void controllerMoved(int /*controllerNumber*/, int /*newValue*/) override
     {
     }
 
-    void applyADSR()
+    float wave(double angle)
     {
-        switch (state)
+        switch(waveform)
+        {
+            case SINE:
+                return std::sin(angle);
+            case SAW:
+                return angle - floor(angle);
+            case TRIANGLE:
+                return 1.0 - fabs(fmod(angle, 2.0) - 1.0);
+            default:
+                return 0;
+        }
+    }
+
+    double applyADSR(unsigned int i)
+    {
+        switch (state[i])
         {
         case ATTACK: // Attack phase in the Envelope Generator
-            level = targetA*gainA + (1 - gainA)*level;
-            if (fabs(level-targetA) <= 0.01)
+            level[i] = targetA[i] * gainA[i] + (1 - gainA[i])*level[i];
+            if (fabs(level[i] - targetA[i]) <= 0.01)
             {
-                state = DECAY;
+                state[i] = DECAY;
             }
             break;
         case DECAY: // Decay phase in the Envelope Generator
-            level = targetD*gainD + (1 - gainD)*level;
-            if (fabs(level-targetD) <= 0.01)
+            level[i] = targetD[i] * gainD[i] + (1 - gainD[i])*level[i];
+            if (fabs(level[i] - targetD[i]) <= 0.01)
             {
-                state = SUSTAIN;
+                state[i] = SUSTAIN;
             }
             break;
         case SUSTAIN: // Sustain phase in the Envelope Generator
             break;
         case RELEASE: // Release phase in the Envelope Generator
-            level = (1 - gainR)*level;
+            level[i] = (1 - gainR[i])*level[i];
             break;
         }
+        return level[i];
+    }
+
+    float applyFM()
+    {
+        double angle1 = currentAngle * 4;
+        double angle2 = currentAngle/2;
+        double angle3 = currentAngle/8;
+        float y;
+        float x = wave(currentAngle);
+        switch (model)
+        {
+        case 1:
+            y = (float)(applyADSR(0)*std::sin(angle1 + applyADSR(1)*std::sin(angle2 + applyADSR(2)*std::sin(angle3 + applyADSR(3)*x))));
+            break;
+        case 2:
+            y = (float)(applyADSR(0)*std::sin(angle1 + applyADSR(1)*std::sin(angle2 + applyADSR(2)*std::sin(angle3) + applyADSR(3)*x)));
+            break;
+        case 3:
+            y = (float)(applyADSR(0)*std::sin(angle1 + applyADSR(1)*std::sin(angle2 + applyADSR(2)*std::sin(angle3)) + applyADSR(3)*x));
+            break;
+        default:
+            y = 0;
+            break;
+        }
+        return y;
     }
 
     void renderNextBlock(AudioSampleBuffer& outputBuffer, int startSample, int numSamples) override
     {
         if (angleDelta != 0.0)
         {
-            double angle1 = 0.35;
-            double angle2 = 0.55;
-            double angle3 = 0.27;
-            float y;
-            if (state == RELEASE)
+            if (state[0] == RELEASE)
             {
                 while (--numSamples >= 0)
                 {
-                    applyADSR();
-                    switch(model)
-                    {
-                        case 1:
-                            y = (float)(std::sin(angle1+std::sin(angle2+std::sin(angle3+std::sin(currentAngle)))));
-                            break;
-                        case 2:
-                            y = (float)(std::sin(angle1+std::sin(angle2+std::sin(angle3)+std::sin(currentAngle))));
-                            break;
-                        case 3:
-                            y = (float)(std::sin(angle1+std::sin(angle2+std::sin(angle3))+std::sin(currentAngle)));
-                        default:
-                            y=0;
-                            break;
-                    }
-                    const float currentSample = y*level;
+                    const float currentSample = applyFM();
+
                     for (int i = outputBuffer.getNumChannels(); --i >= 0;)
                         outputBuffer.addSample(i, startSample, currentSample);
 
                     currentAngle += angleDelta;
                     ++startSample;
 
-                    if (level <= 0.005)
+                    if (level[0] <= 0.005 && level[1] <= 0.005 && level[2] <= 0.005 && level[3] <= 0.005)
                     {
                         clearCurrentNote();
                         angleDelta = 0.0;
@@ -142,22 +170,7 @@ struct FMSynthVoice : public SynthesiserVoice
             {
                 while (--numSamples >= 0)
                 {
-                    applyADSR();
-                    switch(model)
-                    {
-                        case 1:
-                            y = (float)(std::sin(angle1+std::sin(angle2+std::sin(angle3+std::sin(currentAngle)))));
-                            break;
-                        case 2:
-                            y = (float)(std::sin(angle1+std::sin(angle2+std::sin(angle3)+std::sin(currentAngle))));
-                            break;
-                        case 3:
-                            y = (float)(std::sin(angle1+std::sin(angle2+std::sin(angle3))+std::sin(currentAngle)));
-                        default:
-                            y=0;
-                            break;
-                    }
-                    const float currentSample = y*level;
+                    const float currentSample = applyFM();
 
                     for (int i = outputBuffer.getNumChannels(); --i >= 0;)
                         outputBuffer.addSample(i, startSample, currentSample);
@@ -170,9 +183,10 @@ struct FMSynthVoice : public SynthesiserVoice
     }
 
 private:
-    double currentAngle, angleDelta, level,gainA, gainD, gainR, targetA, targetD;
-    char state;
-    unsigned int model;
+    double currentAngle, angleDelta;
+    std::vector<double> gainA, gainD, gainR, targetA, targetD, level;
+    std::vector<char> state;
+    unsigned int model,waveform;
 };
 //==============================================================================
 /*
@@ -228,7 +242,7 @@ public:
         midiMessagesBox.setColour(TextEditor::backgroundColourId, Colour(0x32ffffff));
         midiMessagesBox.setColour(TextEditor::outlineColourId, Colour(0x1c000000));
         midiMessagesBox.setColour(TextEditor::shadowColourId, Colour(0x16000000));
-        
+
         for (int i = 4; --i >= 0;)
         {
             synth.addVoice(new FMSynthVoice());   // Add voices for the synth
