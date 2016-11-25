@@ -29,8 +29,9 @@ struct FMSynthSound : public SynthesiserSound
 struct FMSynthVoice : public SynthesiserVoice
 {
 
-    FMSynthVoice() : currentAngle(0), angleDelta(0), level(0), tailOff(0)
+    FMSynthVoice() : currentAngle(0), angleDelta(0), level(0)
     {
+        model = 3;
     }
 
     bool canPlaySound(SynthesiserSound* sound) override
@@ -43,7 +44,6 @@ struct FMSynthVoice : public SynthesiserVoice
     {
         currentAngle = 0.0;
         level = 0;
-        tailOff = 0.0;
         state = ATTACK;
         gainA = 0.00015;
         gainD = 0.0004;
@@ -54,6 +54,7 @@ struct FMSynthVoice : public SynthesiserVoice
         double cyclesPerSample = cyclesPerSecond / getSampleRate();
 
         angleDelta = cyclesPerSample * 2.0 * double_Pi;
+        printf("%f\n",angleDelta);
     }
 
     void stopNote(float /*velocity*/, bool /*allowTailOff*/) override
@@ -99,14 +100,30 @@ struct FMSynthVoice : public SynthesiserVoice
     {
         if (angleDelta != 0.0)
         {
+            double angle1 = 0.35;
+            double angle2 = 0.55;
+            double angle3 = 0.27;
+            float y;
             if (state == RELEASE)
             {
                 while (--numSamples >= 0)
                 {
-                    printf("level: %f\n",level);
                     applyADSR();
-                    const float currentSample = (float)(std::sin(currentAngle) * level);
-
+                    switch(model)
+                    {
+                        case 1:
+                            y = (float)(std::sin(angle1+std::sin(angle2+std::sin(angle3+std::sin(currentAngle)))));
+                            break;
+                        case 2:
+                            y = (float)(std::sin(angle1+std::sin(angle2+std::sin(angle3)+std::sin(currentAngle))));
+                            break;
+                        case 3:
+                            y = (float)(std::sin(angle1+std::sin(angle2+std::sin(angle3))+std::sin(currentAngle)));
+                        default:
+                            y=0;
+                            break;
+                    }
+                    const float currentSample = y*level;
                     for (int i = outputBuffer.getNumChannels(); --i >= 0;)
                         outputBuffer.addSample(i, startSample, currentSample);
 
@@ -126,8 +143,21 @@ struct FMSynthVoice : public SynthesiserVoice
                 while (--numSamples >= 0)
                 {
                     applyADSR();
-                    
-                    const float currentSample = (float)(std::sin(currentAngle) * level);
+                    switch(model)
+                    {
+                        case 1:
+                            y = (float)(std::sin(angle1+std::sin(angle2+std::sin(angle3+std::sin(currentAngle)))));
+                            break;
+                        case 2:
+                            y = (float)(std::sin(angle1+std::sin(angle2+std::sin(angle3)+std::sin(currentAngle))));
+                            break;
+                        case 3:
+                            y = (float)(std::sin(angle1+std::sin(angle2+std::sin(angle3))+std::sin(currentAngle)));
+                        default:
+                            y=0;
+                            break;
+                    }
+                    const float currentSample = y*level;
 
                     for (int i = outputBuffer.getNumChannels(); --i >= 0;)
                         outputBuffer.addSample(i, startSample, currentSample);
@@ -140,8 +170,9 @@ struct FMSynthVoice : public SynthesiserVoice
     }
 
 private:
-    double currentAngle, angleDelta, level, tailOff, gainA, gainD, gainR, targetA, targetD;
+    double currentAngle, angleDelta, level,gainA, gainD, gainR, targetA, targetD;
     char state;
+    unsigned int model;
 };
 //==============================================================================
 /*
