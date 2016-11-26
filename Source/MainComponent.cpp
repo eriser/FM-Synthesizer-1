@@ -37,7 +37,7 @@ struct FMSynthVoice : public SynthesiserVoice
     FMSynthVoice() : currentAngle(0), angleDelta(0), level(0)
     {
         waveform = SINE; // Waveform model
-        model = 3; // Algorithm model
+        model = 6; // Algorithm model
         gainA = { 0.075,0.00025,0.000104,0.00087 };
         gainD = { 0.07,0.006,0.00024,0.00054 };
         gainR = { 0.00075,0.00005,0.000035,0.00005 };
@@ -134,6 +134,18 @@ struct FMSynthVoice : public SynthesiserVoice
             break;
         case 3:
             y = (float)(applyADSR(0)*std::sin(angle1 + applyADSR(1)*std::sin(angle2 + applyADSR(2)*std::sin(angle3)) + applyADSR(3)*x));
+            break;
+        case 4:
+            y = (float)(applyADSR(0)*std::sin(angle1 + applyADSR(1)*std::sin(angle2)) + applyADSR(2)*std::sin(angle3 + applyADSR(3)*x));
+            break;
+        case 5:
+            y = (float)(applyADSR(0)*std::sin(angle1 + applyADSR(3)*x) + applyADSR(1)*std::sin(angle2 + applyADSR(3)*x) + applyADSR(2)*std::sin(angle3 + applyADSR(3)*x));
+            break;
+        case 6:
+            y = (float)(applyADSR(0)*std::sin(angle1) + applyADSR(1)*std::sin(angle2) + applyADSR(2)*std::sin(angle3 + applyADSR(3)*x));
+            break;
+        case 7:
+            y = (float)(applyADSR(0)*std::sin(angle1) + applyADSR(1)*std::sin(angle2) + applyADSR(2)*std::sin(angle3) + applyADSR(3)*x);
             break;
         default:
             y = 0;
