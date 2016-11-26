@@ -36,8 +36,8 @@ struct FMSynthVoice : public SynthesiserVoice
 
     FMSynthVoice() : currentAngle(0), angleDelta(0), level(0)
     {
-        waveform = SINE; // Waveform model
-        model = 6; // Algorithm model
+        waveform = TRIANGLE; // Waveform model
+        model = 3; // Algorithm model
         gainA = { 0.075,0.00025,0.000104,0.00087 };
         gainD = { 0.07,0.006,0.00024,0.00054 };
         gainR = { 0.00075,0.00005,0.000035,0.00005 };
