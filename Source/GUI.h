@@ -36,7 +36,7 @@
 */
 class GUI  : public Component,
              public SliderListener,
-             public ButtonListener
+             public ComboBoxListener
 {
 public:
     //==============================================================================
@@ -50,7 +50,7 @@ public:
     void paint (Graphics& g) override;
     void resized() override;
     void sliderValueChanged (Slider* sliderThatWasMoved) override;
-    void buttonClicked (Button* buttonThatWasClicked) override;
+    void comboBoxChanged (ComboBox* comboBoxThatHasChanged) override;
 
 
 
@@ -61,56 +61,58 @@ private:
     //==============================================================================
     ScopedPointer<Slider> LFOFreq;
     ScopedPointer<Slider> LFOAmp;
-    ScopedPointer<Slider> Oscillator;
-    ScopedPointer<Slider> EG1A;
-    ScopedPointer<Slider> EG1D;
-    ScopedPointer<Slider> EG1S;
-    ScopedPointer<Slider> EG1R;
-    ScopedPointer<Slider> EG1G;
-    ScopedPointer<ToggleButton> sin;
-    ScopedPointer<ToggleButton> sq;
-    ScopedPointer<ToggleButton> saw;
-    ScopedPointer<ToggleButton> tri;
-    ScopedPointer<TextEditor> textEditor;
-    ScopedPointer<TextEditor> textEditor2;
-    ScopedPointer<TextEditor> textEditor3;
-    ScopedPointer<TextEditor> textEditor4;
+    ScopedPointer<TextEditor> textEditor23;
+    ScopedPointer<TextEditor> textEditor24;
+    ScopedPointer<ComboBox> comboBox;
+    ScopedPointer<ComboBox> comboBox2;
+    ScopedPointer<Slider> EG1A2;
+    ScopedPointer<Slider> EG1D2;
+    ScopedPointer<Slider> EG1S2;
+    ScopedPointer<Slider> EG1R2;
+    ScopedPointer<Slider> EG1G4;
     ScopedPointer<TextEditor> textEditor5;
-    ScopedPointer<Slider> EG2A;
-    ScopedPointer<Slider> EG2D;
-    ScopedPointer<Slider> EG2S;
-    ScopedPointer<Slider> EG2R;
-    ScopedPointer<Slider> EG2G;
+    ScopedPointer<TextEditor> EG_numero2;
+    ScopedPointer<Slider> EG1G5;
     ScopedPointer<TextEditor> textEditor6;
     ScopedPointer<TextEditor> textEditor7;
     ScopedPointer<TextEditor> textEditor8;
+    ScopedPointer<Slider> EG1G6;
+    ScopedPointer<Slider> EG1A3;
+    ScopedPointer<Slider> EG1D3;
+    ScopedPointer<Slider> EG1S3;
+    ScopedPointer<Slider> EG1R3;
+    ScopedPointer<Slider> EG1G2;
+    ScopedPointer<TextEditor> textEditor2;
+    ScopedPointer<TextEditor> EG_numero3;
+    ScopedPointer<Slider> EG1G3;
+    ScopedPointer<TextEditor> textEditor3;
+    ScopedPointer<TextEditor> textEditor4;
     ScopedPointer<TextEditor> textEditor9;
+    ScopedPointer<Slider> EG1G7;
+    ScopedPointer<Slider> EG1A4;
+    ScopedPointer<Slider> EG1D4;
+    ScopedPointer<Slider> EG1S4;
+    ScopedPointer<Slider> EG1R4;
+    ScopedPointer<Slider> EG1G8;
     ScopedPointer<TextEditor> textEditor10;
-    ScopedPointer<Slider> EG3A;
-    ScopedPointer<Slider> EG3D;
-    ScopedPointer<Slider> EG3S;
-    ScopedPointer<Slider> EG3R;
-    ScopedPointer<Slider> EG3G;
+    ScopedPointer<TextEditor> EG_numero4;
+    ScopedPointer<Slider> EG1G9;
     ScopedPointer<TextEditor> textEditor11;
     ScopedPointer<TextEditor> textEditor12;
     ScopedPointer<TextEditor> textEditor13;
+    ScopedPointer<Slider> EG1G10;
+    ScopedPointer<Slider> EG1A5;
+    ScopedPointer<Slider> EG1D5;
+    ScopedPointer<Slider> EG1S5;
+    ScopedPointer<Slider> EG1R5;
+    ScopedPointer<Slider> EG1G11;
     ScopedPointer<TextEditor> textEditor14;
+    ScopedPointer<TextEditor> EG_numero5;
+    ScopedPointer<Slider> EG1G12;
     ScopedPointer<TextEditor> textEditor15;
-    ScopedPointer<Slider> EG4A;
-    ScopedPointer<Slider> EG4D;
-    ScopedPointer<Slider> EG4S;
-    ScopedPointer<Slider> EG4R;
-    ScopedPointer<Slider> EG4G;
     ScopedPointer<TextEditor> textEditor16;
     ScopedPointer<TextEditor> textEditor17;
-    ScopedPointer<TextEditor> textEditor18;
-    ScopedPointer<TextEditor> textEditor19;
-    ScopedPointer<TextEditor> textEditor20;
-    ScopedPointer<TextEditor> textEditor21;
-    ScopedPointer<TextEditor> textEditor22;
-    ScopedPointer<TextEditor> textEditor23;
-    ScopedPointer<TextEditor> textEditor24;
-    ScopedPointer<TextEditor> textEditor25;
+    ScopedPointer<Slider> EG1G13;
 
 
     //==============================================================================
