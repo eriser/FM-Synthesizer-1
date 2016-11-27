@@ -36,8 +36,8 @@ struct FMSynthVoice : public SynthesiserVoice
 
     FMSynthVoice() : currentAngle(0), angleDelta(0), level(0)
     {
-        ampLFO = 1;
-        freqLFO = 1;
+        ampLFO = 0;
+        freqLFO = 0.5;
         angleLFO = 0;
         deltaLFO = 2 * double_Pi*(freqLFO / getSampleRate());
         waveform = SINE; // Waveform model
@@ -92,17 +92,46 @@ struct FMSynthVoice : public SynthesiserVoice
             return 0;
         }
     }
-    float applyLFO(float signal) {
-        if (freqLFO > 0) {
-            float y = signal*ampLFO*std::sin(angleLFO);
-            //float y = signal*ampLFO*(angleLFO - floor(angleLFO));
-            angleLFO += deltaLFO;
-            return y;
-        }
-        else {
-            return signal;
-        }
+
+    void setFreqLFO(double freq) {
+        freqLFO = freq;
+        angleLFO = 0;
+        deltaLFO = 2 * double_Pi*(freqLFO / getSampleRate());
     }
+
+    void setAmpLFO(double a) {
+        ampLFO = a;
+    }
+
+    void setGainA(double gain, unsigned int envelope) {
+        gainA[envelope] = gain;
+    }
+
+    void setGainD(double gain, unsigned int envelope) {
+        gainD[envelope] = gain;
+    }
+
+    void setGainR(double gain, unsigned int envelope) {
+        gainR[envelope] = gain;
+    }
+
+    void setTargetA(double target, unsigned int envelope) {
+        targetA[envelope] = target;
+    }
+
+    void setTargetD(double target, unsigned int envelope) {
+        targetD[envelope] = target;
+    }
+
+
+    float applyLFO(float signal) {
+        //float y = signal*(1 - ampLFO*std::sin(angleLFO));
+        //float y = signal*(1-ampLFO*(angleLFO - floor(angleLFO)));
+        float y = signal*(1-ampLFO*(1.0 - fabs(fmod(angleLFO, 2.0) - 1.0)));
+        angleLFO += deltaLFO;
+        return y;
+    }
+
     double applyADSR(unsigned int i)
     {
         switch (state[i])
@@ -132,8 +161,8 @@ struct FMSynthVoice : public SynthesiserVoice
 
     float applyFM()
     {
-        double angle1 = currentAngle*4;
-        double angle2 = currentAngle/3;
+        double angle1 = currentAngle * 4;
+        double angle2 = currentAngle / 3;
         double angle3 = currentAngle / 4;
         float y;
         float x = wave(currentAngle);
@@ -267,244 +296,245 @@ public:
         midiMessagesBox.setColour(TextEditor::backgroundColourId, Colour(0x32ffffff));
         midiMessagesBox.setColour(TextEditor::outlineColourId, Colour(0x1c000000));
         midiMessagesBox.setColour(TextEditor::shadowColourId, Colour(0x16000000));*/
-        addAndMakeVisible (LFOFreq = new Slider ("LFOFreq"));
-        LFOFreq->setRange (0, 10, 0);
-        LFOFreq->setSliderStyle (Slider::LinearVertical);
-        LFOFreq->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        LFOFreq->addListener (this);
+        addAndMakeVisible(LFOFreq = new Slider("LFOFreq"));
+        LFOFreq->setRange(0.5, 10, 0);
+        LFOFreq->setSliderStyle(Slider::LinearVertical);
+        LFOFreq->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        LFOFreq->addListener(this);
 
-        addAndMakeVisible (LFOAmp = new Slider ("LFOAmp"));
-        LFOAmp->setRange (0, 10, 0);
-        LFOAmp->setSliderStyle (Slider::LinearVertical);
-        LFOAmp->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        LFOAmp->addListener (this);
+        addAndMakeVisible(LFOAmp = new Slider("LFOAmp"));
+        LFOAmp->setRange(0, 1, 0);
+        LFOAmp->setSliderStyle(Slider::LinearVertical);
+        LFOAmp->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        LFOAmp->addListener(this);
 
-        addAndMakeVisible (comboBox = new ComboBox ("new combo box"));
-        comboBox->setEditableText (true);
-        comboBox->setJustificationType (Justification::centredLeft);
-        comboBox->setTextWhenNothingSelected (TRANS("CHOOSE ALGORITHM"));
-        comboBox->setTextWhenNoChoicesAvailable (TRANS("(no choices)"));
-        comboBox->addItem (TRANS("Algorithm 1"), 1);
-        comboBox->addItem (TRANS("Algorithm 2"), 2);
-        comboBox->addItem (TRANS("Algorithm 3"), 3);
-        comboBox->addItem (TRANS("Algorithm 4"), 4);
-        comboBox->addItem (TRANS("Algorithm 5"), 5);
-        comboBox->addItem (TRANS("Algorithm 6"), 6);
-        comboBox->addItem (TRANS("Algortihm 7"), 7);
+        addAndMakeVisible(comboBox = new ComboBox("new combo box"));
+        comboBox->setEditableText(true);
+        comboBox->setJustificationType(Justification::centredLeft);
+        comboBox->setTextWhenNothingSelected(TRANS("CHOOSE ALGORITHM"));
+        comboBox->setTextWhenNoChoicesAvailable(TRANS("(no choices)"));
+        comboBox->addItem(TRANS("Algorithm 1"), 1);
+        comboBox->addItem(TRANS("Algorithm 2"), 2);
+        comboBox->addItem(TRANS("Algorithm 3"), 3);
+        comboBox->addItem(TRANS("Algorithm 4"), 4);
+        comboBox->addItem(TRANS("Algorithm 5"), 5);
+        comboBox->addItem(TRANS("Algorithm 6"), 6);
+        comboBox->addItem(TRANS("Algortihm 7"), 7);
         comboBox->addSeparator();
-        comboBox->addListener (this);
+        comboBox->addListener(this);
 
-        addAndMakeVisible (comboBox2 = new ComboBox ("new combo box"));
-        comboBox2->setEditableText (false);
-        comboBox2->setJustificationType (Justification::centredLeft);
-        comboBox2->setTextWhenNothingSelected (TRANS("CHOOSE WAVEFORM"));
-        comboBox2->setTextWhenNoChoicesAvailable (TRANS("(no choices)"));
-        comboBox2->addItem (TRANS("SIN"), 1);
-        comboBox2->addItem (TRANS("SGUARE"), 2);
-        comboBox2->addItem (TRANS("SAW"), 3);
-        comboBox2->addItem (TRANS("TRIANGLE"), 4);
-        comboBox2->addListener (this);
+        addAndMakeVisible(comboBox2 = new ComboBox("new combo box"));
+        comboBox2->setEditableText(false);
+        comboBox2->setJustificationType(Justification::centredLeft);
+        comboBox2->setTextWhenNothingSelected(TRANS("CHOOSE WAVEFORM"));
+        comboBox2->setTextWhenNoChoicesAvailable(TRANS("(no choices)"));
+        comboBox2->addItem(TRANS("SIN"), 1);
+        comboBox2->addItem(TRANS("SGUARE"), 2);
+        comboBox2->addItem(TRANS("SAW"), 3);
+        comboBox2->addItem(TRANS("TRIANGLE"), 4);
+        comboBox2->addListener(this);
 
-        addAndMakeVisible (EG2A = new Slider ("EG1A"));
-        EG2A->setRange (0, 10, 0);
-        EG2A->setSliderStyle (Slider::LinearVertical);
-        EG2A->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG2A->addListener (this);
+        addAndMakeVisible(EG2A = new Slider("EG1A"));
+        EG2A->setRange(0, 10, 0);
+        EG2A->setSliderStyle(Slider::LinearVertical);
+        EG2A->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG2A->addListener(this);
 
-        addAndMakeVisible (EG2D = new Slider ("EG1D"));
-        EG2D->setRange (0, 10, 0);
-        EG2D->setSliderStyle (Slider::LinearVertical);
-        EG2D->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG2D->addListener (this);
+        addAndMakeVisible(EG2D = new Slider("EG1D"));
+        EG2D->setRange(0, 10, 0);
+        EG2D->setSliderStyle(Slider::LinearVertical);
+        EG2D->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG2D->addListener(this);
 
-        addAndMakeVisible (EG2S = new Slider ("EG1S"));
-        EG2S->setRange (0, 10, 0);
-        EG2S->setSliderStyle (Slider::LinearVertical);
-        EG2S->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG2S->addListener (this);
+        addAndMakeVisible(EG2S = new Slider("EG1S"));
+        EG2S->setRange(0, 10, 0);
+        EG2S->setSliderStyle(Slider::LinearVertical);
+        EG2S->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG2S->addListener(this);
 
-        addAndMakeVisible (EG2R = new Slider ("EG1R"));
-        EG2R->setRange (0, 10, 0);
-        EG2R->setSliderStyle (Slider::LinearVertical);
-        EG2R->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG2R->addListener (this);
+        addAndMakeVisible(EG2R = new Slider("EG1R"));
+        EG2R->setRange(0, 10, 0);
+        EG2R->setSliderStyle(Slider::LinearVertical);
+        EG2R->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG2R->addListener(this);
 
-        addAndMakeVisible (EG2G = new Slider ("EG1G"));
-        EG2G->setRange (0, 10, 0);
-        EG2G->setSliderStyle (Slider::RotaryHorizontalVerticalDrag);
-        EG2G->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG2G->addListener (this);
+        addAndMakeVisible(EG2G = new Slider("EG1G"));
+        EG2G->setRange(0, 10, 0);
+        EG2G->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG2G->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG2G->addListener(this);
 
-        addAndMakeVisible (EG2TONE = new Slider ("EG1G"));
-        EG2TONE->setRange (0, 10, 0);
-        EG2TONE->setSliderStyle (Slider::RotaryHorizontalVerticalDrag);
-        EG2TONE->setTextBoxStyle (Slider::TextBoxBelow, false, 80, 20);
-        EG2TONE->setColour (Slider::textBoxBackgroundColourId, Colour (0x00000000));
-        EG2TONE->setColour (Slider::textBoxOutlineColourId, Colour (0x00808080));
-        EG2TONE->addListener (this);
+        addAndMakeVisible(EG2TONE = new Slider("EG1G"));
+        EG2TONE->setRange(0, 10, 0);
+        EG2TONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG2TONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
+        EG2TONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
+        EG2TONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
+        EG2TONE->addListener(this);
 
-        addAndMakeVisible (EG2SEMITONE = new Slider ("EG1G"));
-        EG2SEMITONE->setRange (0, 10, 0);
-        EG2SEMITONE->setSliderStyle (Slider::RotaryHorizontalVerticalDrag);
-        EG2SEMITONE->setTextBoxStyle (Slider::TextBoxBelow, false, 80, 20);
-        EG2SEMITONE->setColour (Slider::textBoxBackgroundColourId, Colour (0x00000000));
-        EG2SEMITONE->setColour (Slider::textBoxOutlineColourId, Colour (0x00808080));
-        EG2SEMITONE->addListener (this);
+        addAndMakeVisible(EG2SEMITONE = new Slider("EG1G"));
+        EG2SEMITONE->setRange(0, 10, 0);
+        EG2SEMITONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG2SEMITONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
+        EG2SEMITONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
+        EG2SEMITONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
+        EG2SEMITONE->addListener(this);
 
-        addAndMakeVisible (EG1A = new Slider ("EG1A"));
-        EG1A->setRange (0, 10, 0);
-        EG1A->setSliderStyle (Slider::LinearVertical);
-        EG1A->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG1A->addListener (this);
+        addAndMakeVisible(EG1A = new Slider("EG1A"));
+        EG1A->setRange(0, 10, 0);
+        EG1A->setSliderStyle(Slider::LinearVertical);
+        EG1A->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG1A->addListener(this);
 
-        addAndMakeVisible (EG1D = new Slider ("EG1D"));
-        EG1D->setRange (0, 10, 0);
-        EG1D->setSliderStyle (Slider::LinearVertical);
-        EG1D->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG1D->addListener (this);
+        addAndMakeVisible(EG1D = new Slider("EG1D"));
+        EG1D->setRange(0, 10, 0);
+        EG1D->setSliderStyle(Slider::LinearVertical);
+        EG1D->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG1D->addListener(this);
 
-        addAndMakeVisible (EG1S = new Slider ("EG1S"));
-        EG1S->setRange (0, 10, 0);
-        EG1S->setSliderStyle (Slider::LinearVertical);
-        EG1S->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG1S->addListener (this);
+        addAndMakeVisible(EG1S = new Slider("EG1S"));
+        EG1S->setRange(0, 10, 0);
+        EG1S->setSliderStyle(Slider::LinearVertical);
+        EG1S->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG1S->addListener(this);
 
-        addAndMakeVisible (EG1R = new Slider ("EG1R"));
-        EG1R->setRange (0, 10, 0);
-        EG1R->setSliderStyle (Slider::LinearVertical);
-        EG1R->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG1R->addListener (this);
+        addAndMakeVisible(EG1R = new Slider("EG1R"));
+        EG1R->setRange(0, 10, 0);
+        EG1R->setSliderStyle(Slider::LinearVertical);
+        EG1R->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG1R->addListener(this);
 
-        addAndMakeVisible (EG1G = new Slider ("EG1G"));
-        EG1G->setRange (0, 10, 0);
-        EG1G->setSliderStyle (Slider::RotaryHorizontalVerticalDrag);
-        EG1G->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG1G->addListener (this);
+        addAndMakeVisible(EG1G = new Slider("EG1G"));
+        EG1G->setRange(0, 10, 0);
+        EG1G->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG1G->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG1G->addListener(this);
 
-        addAndMakeVisible (EG1TONE = new Slider ("EG1G"));
-        EG1TONE->setRange (0, 10, 0);
-        EG1TONE->setSliderStyle (Slider::RotaryHorizontalVerticalDrag);
-        EG1TONE->setTextBoxStyle (Slider::TextBoxBelow, false, 80, 20);
-        EG1TONE->setColour (Slider::textBoxBackgroundColourId, Colour (0x00000000));
-        EG1TONE->setColour (Slider::textBoxOutlineColourId, Colour (0x00808080));
-        EG1TONE->addListener (this);
+        addAndMakeVisible(EG1TONE = new Slider("EG1G"));
+        EG1TONE->setRange(0, 10, 0);
+        EG1TONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG1TONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
+        EG1TONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
+        EG1TONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
+        EG1TONE->addListener(this);
 
-        addAndMakeVisible (EG1SEMITONE = new Slider ("EG1G"));
-        EG1SEMITONE->setRange (0, 10, 0);
-        EG1SEMITONE->setSliderStyle (Slider::RotaryHorizontalVerticalDrag);
-        EG1SEMITONE->setTextBoxStyle (Slider::TextBoxBelow, false, 80, 20);
-        EG1SEMITONE->setColour (Slider::textBoxBackgroundColourId, Colour (0x00000000));
-        EG1SEMITONE->setColour (Slider::textBoxOutlineColourId, Colour (0x00808080));
-        EG1SEMITONE->addListener (this);
+        addAndMakeVisible(EG1SEMITONE = new Slider("EG1G"));
+        EG1SEMITONE->setRange(0, 10, 0);
+        EG1SEMITONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG1SEMITONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
+        EG1SEMITONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
+        EG1SEMITONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
+        EG1SEMITONE->addListener(this);
 
-        addAndMakeVisible (EG4A = new Slider ("EG1A"));
-        EG4A->setRange (0, 10, 0);
-        EG4A->setSliderStyle (Slider::LinearVertical);
-        EG4A->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG4A->addListener (this);
+        addAndMakeVisible(EG4A = new Slider("EG1A"));
+        EG4A->setRange(0, 10, 0);
+        EG4A->setSliderStyle(Slider::LinearVertical);
+        EG4A->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG4A->addListener(this);
 
-        addAndMakeVisible (EG4D = new Slider ("EG1D"));
-        EG4D->setRange (0, 10, 0);
-        EG4D->setSliderStyle (Slider::LinearVertical);
-        EG4D->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG4D->addListener (this);
+        addAndMakeVisible(EG4D = new Slider("EG1D"));
+        EG4D->setRange(0, 10, 0);
+        EG4D->setSliderStyle(Slider::LinearVertical);
+        EG4D->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG4D->addListener(this);
 
-        addAndMakeVisible (EG4S = new Slider ("EG1S"));
-        EG4S->setRange (0, 10, 0);
-        EG4S->setSliderStyle (Slider::LinearVertical);
-        EG4S->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG4S->addListener (this);
+        addAndMakeVisible(EG4S = new Slider("EG1S"));
+        EG4S->setRange(0, 10, 0);
+        EG4S->setSliderStyle(Slider::LinearVertical);
+        EG4S->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG4S->addListener(this);
 
-        addAndMakeVisible (EG4R = new Slider ("EG1R"));
-        EG4R->setRange (0, 10, 0);
-        EG4R->setSliderStyle (Slider::LinearVertical);
-        EG4R->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG4R->addListener (this);
+        addAndMakeVisible(EG4R = new Slider("EG1R"));
+        EG4R->setRange(0, 10, 0);
+        EG4R->setSliderStyle(Slider::LinearVertical);
+        EG4R->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG4R->addListener(this);
 
-        addAndMakeVisible (EG4G = new Slider ("EG1G"));
-        EG4G->setRange (0, 10, 0);
-        EG4G->setSliderStyle (Slider::RotaryHorizontalVerticalDrag);
-        EG4G->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG4G->addListener (this);
+        addAndMakeVisible(EG4G = new Slider("EG1G"));
+        EG4G->setRange(0, 10, 0);
+        EG4G->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG4G->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG4G->addListener(this);
 
-        addAndMakeVisible (EG4TONE = new Slider ("EG1G"));
-        EG4TONE->setRange (0, 10, 0);
-        EG4TONE->setSliderStyle (Slider::RotaryHorizontalVerticalDrag);
-        EG4TONE->setTextBoxStyle (Slider::TextBoxBelow, false, 80, 20);
-        EG4TONE->setColour (Slider::textBoxBackgroundColourId, Colour (0x00000000));
-        EG4TONE->setColour (Slider::textBoxOutlineColourId, Colour (0x00808080));
-        EG4TONE->addListener (this);
+        addAndMakeVisible(EG4TONE = new Slider("EG1G"));
+        EG4TONE->setRange(0, 10, 0);
+        EG4TONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG4TONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
+        EG4TONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
+        EG4TONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
+        EG4TONE->addListener(this);
 
-        addAndMakeVisible (EG4SEMITONE = new Slider ("EG1G"));
-        EG4SEMITONE->setRange (0, 10, 0);
-        EG4SEMITONE->setSliderStyle (Slider::RotaryHorizontalVerticalDrag);
-        EG4SEMITONE->setTextBoxStyle (Slider::TextBoxBelow, false, 80, 20);
-        EG4SEMITONE->setColour (Slider::textBoxBackgroundColourId, Colour (0x00000000));
-        EG4SEMITONE->setColour (Slider::textBoxOutlineColourId, Colour (0x00808080));
-        EG4SEMITONE->addListener (this);
+        addAndMakeVisible(EG4SEMITONE = new Slider("EG1G"));
+        EG4SEMITONE->setRange(0, 10, 0);
+        EG4SEMITONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG4SEMITONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
+        EG4SEMITONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
+        EG4SEMITONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
+        EG4SEMITONE->addListener(this);
 
-        addAndMakeVisible (EG3A = new Slider ("EG1A"));
-        EG3A->setRange (0, 10, 0);
-        EG3A->setSliderStyle (Slider::LinearVertical);
-        EG3A->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG3A->addListener (this);
+        addAndMakeVisible(EG3A = new Slider("EG1A"));
+        EG3A->setRange(0, 10, 0);
+        EG3A->setSliderStyle(Slider::LinearVertical);
+        EG3A->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG3A->addListener(this);
 
-        addAndMakeVisible (EG3D = new Slider ("EG1D"));
-        EG3D->setRange (0, 10, 0);
-        EG3D->setSliderStyle (Slider::LinearVertical);
-        EG3D->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG3D->addListener (this);
+        addAndMakeVisible(EG3D = new Slider("EG1D"));
+        EG3D->setRange(0, 10, 0);
+        EG3D->setSliderStyle(Slider::LinearVertical);
+        EG3D->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG3D->addListener(this);
 
-        addAndMakeVisible (EG3S = new Slider ("EG1S"));
-        EG3S->setRange (0, 10, 0);
-        EG3S->setSliderStyle (Slider::LinearVertical);
-        EG3S->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG3S->addListener (this);
+        addAndMakeVisible(EG3S = new Slider("EG1S"));
+        EG3S->setRange(0, 10, 0);
+        EG3S->setSliderStyle(Slider::LinearVertical);
+        EG3S->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG3S->addListener(this);
 
-        addAndMakeVisible (EG3R = new Slider ("EG1R"));
-        EG3R->setRange (0, 10, 0);
-        EG3R->setSliderStyle (Slider::LinearVertical);
-        EG3R->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG3R->addListener (this);
+        addAndMakeVisible(EG3R = new Slider("EG1R"));
+        EG3R->setRange(0, 10, 0);
+        EG3R->setSliderStyle(Slider::LinearVertical);
+        EG3R->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG3R->addListener(this);
 
-        addAndMakeVisible (EG3G = new Slider ("EG1G"));
-        EG3G->setRange (0, 10, 0);
-        EG3G->setSliderStyle (Slider::RotaryHorizontalVerticalDrag);
-        EG3G->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
-        EG3G->addListener (this);
+        addAndMakeVisible(EG3G = new Slider("EG1G"));
+        EG3G->setRange(0, 10, 0);
+        EG3G->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG3G->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
+        EG3G->addListener(this);
 
-        addAndMakeVisible (EG3TONE = new Slider ("EG1G"));
-        EG3TONE->setRange (0, 10, 0);
-        EG3TONE->setSliderStyle (Slider::RotaryHorizontalVerticalDrag);
-        EG3TONE->setTextBoxStyle (Slider::TextBoxBelow, false, 80, 20);
-        EG3TONE->setColour (Slider::textBoxBackgroundColourId, Colour (0x00000000));
-        EG3TONE->setColour (Slider::textBoxOutlineColourId, Colour (0x00808080));
-        EG3TONE->addListener (this);
+        addAndMakeVisible(EG3TONE = new Slider("EG1G"));
+        EG3TONE->setRange(0, 10, 0);
+        EG3TONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG3TONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
+        EG3TONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
+        EG3TONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
+        EG3TONE->addListener(this);
 
-        addAndMakeVisible (EG3SEMITONE = new Slider ("EG1G"));
-        EG3SEMITONE->setRange (0, 10, 0);
-        EG3SEMITONE->setSliderStyle (Slider::RotaryHorizontalVerticalDrag);
-        EG3SEMITONE->setTextBoxStyle (Slider::TextBoxBelow, false, 80, 20);
-        EG3SEMITONE->setColour (Slider::textBoxBackgroundColourId, Colour (0x00000000));
-        EG3SEMITONE->setColour (Slider::textBoxOutlineColourId, Colour (0x00808080));
-        EG3SEMITONE->addListener (this);
+        addAndMakeVisible(EG3SEMITONE = new Slider("EG1G"));
+        EG3SEMITONE->setRange(0, 10, 0);
+        EG3SEMITONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG3SEMITONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
+        EG3SEMITONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
+        EG3SEMITONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
+        EG3SEMITONE->addListener(this);
 
-        addAndMakeVisible (comboBox3 = new ComboBox ("new combo box"));
-        comboBox3->setEditableText (false);
-        comboBox3->setJustificationType (Justification::centredLeft);
-        comboBox3->setTextWhenNothingSelected (TRANS("CHOOSE WAVEFORM"));
-        comboBox3->setTextWhenNoChoicesAvailable (TRANS("(no choices)"));
-        comboBox3->addItem (TRANS("SIN"), 1);
-        comboBox3->addItem (TRANS("SGUARE"), 2);
-        comboBox3->addItem (TRANS("SAW"), 3);
-        comboBox3->addItem (TRANS("TRIANGLE"), 4);
-        comboBox3->addListener (this);
-        
+        addAndMakeVisible(comboBox3 = new ComboBox("new combo box"));
+        comboBox3->setEditableText(false);
+        comboBox3->setJustificationType(Justification::centredLeft);
+        comboBox3->setTextWhenNothingSelected(TRANS("CHOOSE WAVEFORM"));
+        comboBox3->setTextWhenNoChoicesAvailable(TRANS("(no choices)"));
+        comboBox3->addItem(TRANS("SIN"), 1);
+        comboBox3->addItem(TRANS("SGUARE"), 2);
+        comboBox3->addItem(TRANS("SAW"), 3);
+        comboBox3->addItem(TRANS("TRIANGLE"), 4);
+        comboBox3->addListener(this);
+
         addAndMakeVisible(keyboardComponent);
         keyboardState.addListener(this);
-        for (int i = 4; --i >= 0;)
+        for (unsigned int i = 0; i<4; i++)
         {
-            synth.addVoice(new FMSynthVoice());   // Add voices for the synth
+            voices.push_back(new FMSynthVoice());
+            synth.addVoice(voices[i]);   // Add voices for the synth
         }
         synth.clearSounds();
         synth.addSound(new FMSynthSound()); // Add the sound for synth
@@ -512,7 +542,7 @@ public:
         setSize(800, 600);
 
         setAudioChannels(2, 2); // specify number of input and output channels
-        keyboardComponent.setBounds (0, 520, 800, 80);
+        keyboardComponent.setBounds(0, 520, 800, 80);
     }
 
     ~MainContentComponent()
@@ -588,246 +618,246 @@ public:
     void paint(Graphics& g) override
     {
         // You can add your drawing code here!
-        g.fillAll (Colours::white);
+        g.fillAll(Colours::white);
 
-        g.setGradientFill (ColourGradient (Colour (0xffbebebf),
-                                           50.0f, 0.0f,
-                                           Colour (0xff67696a),
-                                           104.0f, 512.0f,
-                                           false));
-        g.fillRect (-12, 0, 800, 600);
+        g.setGradientFill(ColourGradient(Colour(0xffbebebf),
+            50.0f, 0.0f,
+            Colour(0xff67696a),
+            104.0f, 512.0f,
+            false));
+        g.fillRect(-12, 0, 800, 600);
 
-        g.setGradientFill (ColourGradient (Colour (0xff939395),
-                                           384.0f, 96.0f,
-                                           Colour (0xff626262),
-                                           384.0f, 152.0f,
-                                           false));
-        g.fillRect (8, 28, 352, 136);
+        g.setGradientFill(ColourGradient(Colour(0xff939395),
+            384.0f, 96.0f,
+            Colour(0xff626262),
+            384.0f, 152.0f,
+            false));
+        g.fillRect(8, 28, 352, 136);
 
-        g.setGradientFill (ColourGradient (Colour (0xff737373),
-                                           248.0f, 40.0f,
-                                           Colour (0xff3c3c3c),
-                                           480.0f, 176.0f,
-                                           false));
-        g.drawRect (8, 28, 352, 136, 2);
+        g.setGradientFill(ColourGradient(Colour(0xff737373),
+            248.0f, 40.0f,
+            Colour(0xff3c3c3c),
+            480.0f, 176.0f,
+            false));
+        g.drawRect(8, 28, 352, 136, 2);
 
-        g.setGradientFill (ColourGradient (Colour (0xff939395),
-                                           384.0f, 96.0f,
-                                           Colour (0xff626262),
-                                           384.0f, 152.0f,
-                                           false));
-        g.fillRect (384, 28, 352, 136);
+        g.setGradientFill(ColourGradient(Colour(0xff939395),
+            384.0f, 96.0f,
+            Colour(0xff626262),
+            384.0f, 152.0f,
+            false));
+        g.fillRect(384, 28, 352, 136);
 
-        g.setGradientFill (ColourGradient (Colour (0xff737373),
-                                           248.0f, 40.0f,
-                                           Colour (0xff3c3c3c),
-                                           480.0f, 176.0f,
-                                           false));
-        g.drawRect (384, 28, 352, 136, 2);
+        g.setGradientFill(ColourGradient(Colour(0xff737373),
+            248.0f, 40.0f,
+            Colour(0xff3c3c3c),
+            480.0f, 176.0f,
+            false));
+        g.drawRect(384, 28, 352, 136, 2);
 
-        g.setGradientFill (ColourGradient (Colour (0xff939395),
-                                           384.0f, 96.0f,
-                                           Colour (0xff626262),
-                                           384.0f, 152.0f,
-                                           false));
-        g.fillRect (8, 188, 352, 136);
+        g.setGradientFill(ColourGradient(Colour(0xff939395),
+            384.0f, 96.0f,
+            Colour(0xff626262),
+            384.0f, 152.0f,
+            false));
+        g.fillRect(8, 188, 352, 136);
 
-        g.setGradientFill (ColourGradient (Colour (0xff737373),
-                                           248.0f, 40.0f,
-                                           Colour (0xff3c3c3c),
-                                           480.0f, 176.0f,
-                                           false));
-        g.drawRect (8, 188, 352, 136, 2);
+        g.setGradientFill(ColourGradient(Colour(0xff737373),
+            248.0f, 40.0f,
+            Colour(0xff3c3c3c),
+            480.0f, 176.0f,
+            false));
+        g.drawRect(8, 188, 352, 136, 2);
 
-        g.setGradientFill (ColourGradient (Colour (0xff939395),
-                                           384.0f, 96.0f,
-                                           Colour (0xff626262),
-                                           384.0f, 152.0f,
-                                           false));
-        g.fillRect (384, 188, 352, 136);
+        g.setGradientFill(ColourGradient(Colour(0xff939395),
+            384.0f, 96.0f,
+            Colour(0xff626262),
+            384.0f, 152.0f,
+            false));
+        g.fillRect(384, 188, 352, 136);
 
-        g.setGradientFill (ColourGradient (Colour (0xff737373),
-                                           248.0f, 40.0f,
-                                           Colour (0xff3c3c3c),
-                                           480.0f, 176.0f,
-                                           false));
-        g.drawRect (384, 188, 352, 136, 2);
+        g.setGradientFill(ColourGradient(Colour(0xff737373),
+            248.0f, 40.0f,
+            Colour(0xff3c3c3c),
+            480.0f, 176.0f,
+            false));
+        g.drawRect(384, 188, 352, 136, 2);
 
-        g.setGradientFill (ColourGradient (Colour (0xff636363),
-                                           64.0f, 368.0f,
-                                           Colour (0xff353535),
-                                           56.0f, 504.0f,
-                                           false));
-        g.fillRect (4, 364, 292, 140);
+        g.setGradientFill(ColourGradient(Colour(0xff636363),
+            64.0f, 368.0f,
+            Colour(0xff353535),
+            56.0f, 504.0f,
+            false));
+        g.fillRect(4, 364, 292, 140);
 
-        g.setGradientFill (ColourGradient (Colour (0xff404040),
-                                           160.0f, 352.0f,
-                                           Colour (0xff262626),
-                                           168.0f, 504.0f,
-                                           false));
-        g.drawRect (4, 364, 292, 140, 2);
+        g.setGradientFill(ColourGradient(Colour(0xff404040),
+            160.0f, 352.0f,
+            Colour(0xff262626),
+            168.0f, 504.0f,
+            false));
+        g.drawRect(4, 364, 292, 140, 2);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (40.00f, Font::bold));
-        g.drawText (TRANS("LFO"),
-                    100, 372, 200, 30,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(40.00f, Font::bold));
+        g.drawText(TRANS("LFO"),
+            100, 372, 200, 30,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (100.00f, Font::plain));
-        g.drawText (TRANS("1"),
-                    12, 32, 52, 128,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(100.00f, Font::plain));
+        g.drawText(TRANS("1"),
+            12, 32, 52, 128,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (100.00f, Font::plain));
-        g.drawText (TRANS("4"),
-                    388, 192, 52, 128,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(100.00f, Font::plain));
+        g.drawText(TRANS("4"),
+            388, 192, 52, 128,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (100.00f, Font::plain));
-        g.drawText (TRANS("2"),
-                    388, 32, 52, 128,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(100.00f, Font::plain));
+        g.drawText(TRANS("2"),
+            388, 32, 52, 128,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (100.00f, Font::plain));
-        g.drawText (TRANS("3"),
-                    12, 194, 52, 128,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(100.00f, Font::plain));
+        g.drawText(TRANS("3"),
+            12, 194, 52, 128,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("A"),
-                    124, 36, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("A"),
+            124, 36, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("D"),
-                    164, 36, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("D"),
+            164, 36, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("S"),
-                    204, 36, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("S"),
+            204, 36, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("R"),
-                    244, 36, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("R"),
+            244, 36, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("A"),
-                    500, 36, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("A"),
+            500, 36, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("D"),
-                    540, 36, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("D"),
+            540, 36, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("S"),
-                    580, 36, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("S"),
+            580, 36, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("R"),
-                    620, 36, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("R"),
+            620, 36, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("A"),
-                    500, 196, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("A"),
+            500, 196, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("D"),
-                    540, 196, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("D"),
+            540, 196, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("S"),
-                    580, 196, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("S"),
+            580, 196, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("R"),
-                    620, 196, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("R"),
+            620, 196, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("A"),
-                    124, 196, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("A"),
+            124, 196, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("D"),
-                    164, 196, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("D"),
+            164, 196, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("S"),
-                    204, 196, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("S"),
+            204, 196, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (20.00f, Font::plain));
-        g.drawText (TRANS("R"),
-                    244, 196, 28, 28,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(20.00f, Font::plain));
+        g.drawText(TRANS("R"),
+            244, 196, 28, 28,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (15.00f, Font::plain));
-        g.drawText (TRANS("GAIN"),
-                    300, 92, 48, 30,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(15.00f, Font::plain));
+        g.drawText(TRANS("GAIN"),
+            300, 92, 48, 30,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (15.00f, Font::plain));
-        g.drawText (TRANS("GAIN"),
-                    676, 92, 48, 30,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(15.00f, Font::plain));
+        g.drawText(TRANS("GAIN"),
+            676, 92, 48, 30,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (15.00f, Font::plain));
-        g.drawText (TRANS("GAIN"),
-                    300, 252, 48, 30,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(15.00f, Font::plain));
+        g.drawText(TRANS("GAIN"),
+            300, 252, 48, 30,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (15.00f, Font::plain));
-        g.drawText (TRANS("GAIN"),
-                    676, 252, 48, 30,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(15.00f, Font::plain));
+        g.drawText(TRANS("GAIN"),
+            676, 252, 48, 30,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (15.00f, Font::plain));
-        g.drawText (TRANS("FREQ"),
-                    4, 380, 48, 30,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(15.00f, Font::plain));
+        g.drawText(TRANS("FREQ"),
+            4, 380, 48, 30,
+            Justification::centred, true);
 
-        g.setColour (Colours::black);
-        g.setFont (Font (15.00f, Font::plain));
-        g.drawText (TRANS("AMP"),
-                    68, 380, 48, 30,
-                    Justification::centred, true);
+        g.setColour(Colours::black);
+        g.setFont(Font(15.00f, Font::plain));
+        g.drawText(TRANS("AMP"),
+            68, 380, 48, 30,
+            Justification::centred, true);
     }
 
     void resized() override
@@ -837,41 +867,41 @@ public:
         // update their positions.
         Rectangle<int> area(getLocalBounds());
         midiInputList.setBounds(area.removeFromTop(36).removeFromRight(getWidth() - 150).reduced(8));
-        keyboardComponent.setBounds (0, 520, 800, 80);
+        keyboardComponent.setBounds(0, 520, 800, 80);
         midiMessagesBox.setBounds(area.reduced(8));
-        LFOFreq->setBounds (48, 384, 24, 112);
-        LFOAmp->setBounds (104, 384, 24, 112);
-        comboBox->setBounds (400, 424, 150, 24);
-        comboBox2->setBounds (152, 424, 136, 24);
-        EG2A->setBounds (520, 40, 24, 112);
-        EG2D->setBounds (560, 40, 24, 112);
-        EG2S->setBounds (600, 40, 24, 112);
-        EG2R->setBounds (640, 40, 24, 112);
-        EG2G->setBounds (680, 56, 40, 48);
-        EG2TONE->setBounds (432, 32, 64, 56);
-        EG2SEMITONE->setBounds (432, 88, 64, 56);
-        EG1A->setBounds (144, 40, 24, 112);
-        EG1D->setBounds (184, 40, 24, 112);
-        EG1S->setBounds (224, 40, 24, 112);
-        EG1R->setBounds (264, 40, 24, 112);
-        EG1G->setBounds (304, 56, 40, 48);
-        EG1TONE->setBounds (56, 32, 64, 56);
-        EG1SEMITONE->setBounds (56, 88, 64, 56);
-        EG4A->setBounds (520, 200, 24, 112);
-        EG4D->setBounds (560, 200, 24, 112);
-        EG4S->setBounds (600, 200, 24, 112);
-        EG4R->setBounds (640, 200, 24, 112);
-        EG4G->setBounds (680, 216, 40, 48);
-        EG4TONE->setBounds (432, 192, 64, 56);
-        EG4SEMITONE->setBounds (432, 248, 64, 56);
-        EG3A->setBounds (144, 200, 24, 112);
-        EG3D->setBounds (184, 200, 24, 112);
-        EG3S->setBounds (224, 200, 24, 112);
-        EG3R->setBounds (264, 200, 24, 112);
-        EG3G->setBounds (304, 216, 40, 48);
-        EG3TONE->setBounds (56, 192, 64, 56);
-        EG3SEMITONE->setBounds (56, 248, 64, 56);
-        comboBox3->setBounds (584, 424, 136, 24);
+        LFOFreq->setBounds(48, 384, 24, 112);
+        LFOAmp->setBounds(104, 384, 24, 112);
+        comboBox->setBounds(400, 424, 150, 24);
+        comboBox2->setBounds(152, 424, 136, 24);
+        EG2A->setBounds(520, 40, 24, 112);
+        EG2D->setBounds(560, 40, 24, 112);
+        EG2S->setBounds(600, 40, 24, 112);
+        EG2R->setBounds(640, 40, 24, 112);
+        EG2G->setBounds(680, 56, 40, 48);
+        EG2TONE->setBounds(432, 32, 64, 56);
+        EG2SEMITONE->setBounds(432, 88, 64, 56);
+        EG1A->setBounds(144, 40, 24, 112);
+        EG1D->setBounds(184, 40, 24, 112);
+        EG1S->setBounds(224, 40, 24, 112);
+        EG1R->setBounds(264, 40, 24, 112);
+        EG1G->setBounds(304, 56, 40, 48);
+        EG1TONE->setBounds(56, 32, 64, 56);
+        EG1SEMITONE->setBounds(56, 88, 64, 56);
+        EG4A->setBounds(520, 200, 24, 112);
+        EG4D->setBounds(560, 200, 24, 112);
+        EG4S->setBounds(600, 200, 24, 112);
+        EG4R->setBounds(640, 200, 24, 112);
+        EG4G->setBounds(680, 216, 40, 48);
+        EG4TONE->setBounds(432, 192, 64, 56);
+        EG4SEMITONE->setBounds(432, 248, 64, 56);
+        EG3A->setBounds(144, 200, 24, 112);
+        EG3D->setBounds(184, 200, 24, 112);
+        EG3S->setBounds(224, 200, 24, 112);
+        EG3R->setBounds(264, 200, 24, 112);
+        EG3G->setBounds(304, 216, 40, 48);
+        EG3TONE->setBounds(56, 192, 64, 56);
+        EG3SEMITONE->setBounds(56, 248, 64, 56);
+        comboBox3->setBounds(584, 424, 136, 24);
     }
 
 
@@ -879,33 +909,33 @@ private:
     //==============================================================================
     /*static String getMidiMessageDescription(const MidiMessage& m)
     {
-        if (m.isNoteOn())           return "Note on " + MidiMessage::getMidiNoteName(m.getNoteNumber(), true, true, 3);
-        if (m.isNoteOff())          return "Note off " + MidiMessage::getMidiNoteName(m.getNoteNumber(), true, true, 3);
-        if (m.isProgramChange())    return "Program change " + String(m.getProgramChangeNumber());
-        if (m.isPitchWheel())       return "Pitch wheel " + String(m.getPitchWheelValue());
-        if (m.isAftertouch())       return "After touch " + MidiMessage::getMidiNoteName(m.getNoteNumber(), true, true, 3) + ": " + String(m.getAfterTouchValue());
-        if (m.isChannelPressure())  return "Channel pressure " + String(m.getChannelPressureValue());
-        if (m.isAllNotesOff())      return "All notes off";
-        if (m.isAllSoundOff())      return "All sound off";
-        if (m.isMetaEvent())        return "Meta event";
+    if (m.isNoteOn())           return "Note on " + MidiMessage::getMidiNoteName(m.getNoteNumber(), true, true, 3);
+    if (m.isNoteOff())          return "Note off " + MidiMessage::getMidiNoteName(m.getNoteNumber(), true, true, 3);
+    if (m.isProgramChange())    return "Program change " + String(m.getProgramChangeNumber());
+    if (m.isPitchWheel())       return "Pitch wheel " + String(m.getPitchWheelValue());
+    if (m.isAftertouch())       return "After touch " + MidiMessage::getMidiNoteName(m.getNoteNumber(), true, true, 3) + ": " + String(m.getAfterTouchValue());
+    if (m.isChannelPressure())  return "Channel pressure " + String(m.getChannelPressureValue());
+    if (m.isAllNotesOff())      return "All notes off";
+    if (m.isAllSoundOff())      return "All sound off";
+    if (m.isMetaEvent())        return "Meta event";
 
-        if (m.isController())
-        {
-            String name(MidiMessage::getControllerName(m.getControllerNumber()));
+    if (m.isController())
+    {
+    String name(MidiMessage::getControllerName(m.getControllerNumber()));
 
-            if (name.isEmpty())
-                name = "[" + String(m.getControllerNumber()) + "]";
+    if (name.isEmpty())
+    name = "[" + String(m.getControllerNumber()) + "]";
 
-            return "Controller " + name + ": " + String(m.getControllerValue());
-        }
+    return "Controller " + name + ": " + String(m.getControllerValue());
+    }
 
-        return String::toHexString(m.getRawData(), m.getRawDataSize());
+    return String::toHexString(m.getRawData(), m.getRawDataSize());
     }*/
 
     /*void logMessage(const String& m)
     {
-        midiMessagesBox.moveCaretToEnd();
-        midiMessagesBox.insertTextAtCaret(m + newLine);
+    midiMessagesBox.moveCaretToEnd();
+    midiMessagesBox.insertTextAtCaret(m + newLine);
     }*/
 
     /** Starts listening to a MIDI input device, enabling it if necessary. */
@@ -925,22 +955,25 @@ private:
 
         lastInputIndex = index;
     }
-    void sliderValueChanged(Slider* sliderThatWasMoved){
+    void sliderValueChanged(Slider* sliderThatWasMoved) {
 
         if (sliderThatWasMoved == LFOFreq)
         {
-            //[UserSliderCode_LFOFreq] -- add your slider handling code here..
-            //[/UserSliderCode_LFOFreq]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setFreqLFO(LFOFreq->getValue());
+            }
         }
         else if (sliderThatWasMoved == LFOAmp)
         {
-            //[UserSliderCode_LFOAmp] -- add your slider handling code here..
-            //[/UserSliderCode_LFOAmp]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setAmpLFO(LFOAmp->getValue());
+            }
         }
         else if (sliderThatWasMoved == EG2A)
         {
-            //[UserSliderCode_EG2A] -- add your slider handling code here..
-            //[/UserSliderCode_EG2A]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setGainA(EG2A->getValue(), 2);
+            }
         }
         else if (sliderThatWasMoved == EG2D)
         {
@@ -1081,7 +1114,7 @@ private:
 
     void comboBoxChanged(ComboBox* comboBoxThatHasChanged) override
     {
-        if (comboBoxThatHasChanged == &midiInputList){
+        if (comboBoxThatHasChanged == &midiInputList) {
             setMidiInput(midiInputList.getSelectedItemIndex());
         }
 
@@ -1134,45 +1167,45 @@ private:
     /*class IncomingMessageCallback : public CallbackMessage
     {
     public:
-        IncomingMessageCallback(MainContentComponent* o, const MidiMessage& m, const String& s)
-            : owner(o), message(m), source(s)
-        {}
+    IncomingMessageCallback(MainContentComponent* o, const MidiMessage& m, const String& s)
+    : owner(o), message(m), source(s)
+    {}
 
-        void messageCallback() override
-        {
-            if (owner != nullptr)
-                owner->addMessageToList(message, source);
-        }
+    void messageCallback() override
+    {
+    if (owner != nullptr)
+    owner->addMessageToList(message, source);
+    }
 
-        Component::SafePointer<MainContentComponent> owner;
-        MidiMessage message;
-        String source;
+    Component::SafePointer<MainContentComponent> owner;
+    MidiMessage message;
+    String source;
     };*/
 
     /*void postMessageToList(const MidiMessage& message, const String& source)
     {
-        (new IncomingMessageCallback(this, message, source))->post();
+    (new IncomingMessageCallback(this, message, source))->post();
     }*/
 
     /*void addMessageToList(const MidiMessage& message, const String& source)
     {
-        const double time = message.getTimeStamp() - startTime;
+    const double time = message.getTimeStamp() - startTime;
 
-        const int hours = ((int)(time / 3600.0)) % 24;
-        const int minutes = ((int)(time / 60.0)) % 60;
-        const int seconds = ((int)time) % 60;
-        const int millis = ((int)(time * 1000.0)) % 1000;
+    const int hours = ((int)(time / 3600.0)) % 24;
+    const int minutes = ((int)(time / 60.0)) % 60;
+    const int seconds = ((int)time) % 60;
+    const int millis = ((int)(time * 1000.0)) % 1000;
 
-        const String timecode(String::formatted("%02d:%02d:%02d.%03d",
-            hours,
-            minutes,
-            seconds,
-            millis));
+    const String timecode(String::formatted("%02d:%02d:%02d.%03d",
+    hours,
+    minutes,
+    seconds,
+    millis));
 
-        const String description(getMidiMessageDescription(message));
+    const String description(getMidiMessageDescription(message));
 
-        const String midiMessageString(timecode + "  -  " + description + " (" + source + ")"); // [7]
-        logMessage(midiMessageString);
+    const String midiMessageString(timecode + "  -  " + description + " (" + source + ")"); // [7]
+    logMessage(midiMessageString);
     }*/
 
     MidiMessageCollector midiCollector;
@@ -1184,6 +1217,7 @@ private:
     MidiKeyboardState keyboardState;
     MidiKeyboardComponent keyboardComponent;
     Synthesiser synth;
+    std::vector<FMSynthVoice*> voices;
     TextEditor midiMessagesBox;
     double startTime;
     ScopedPointer<Slider> LFOFreq;
