@@ -36,11 +36,15 @@ struct FMSynthVoice : public SynthesiserVoice
 
     FMSynthVoice() : currentAngle(0), angleDelta(0), level(0)
     {
+        ampLFO = 1;
+        freqLFO = 1;
+        angleLFO = 0;
+        deltaLFO = 2 * double_Pi*(freqLFO / getSampleRate());
         waveform = SINE; // Waveform model
-        model = 6; // Algorithm model
+        model = 3; // Algorithm model
         gainA = { 0.075,0.00025,0.000104,0.00087 };
         gainD = { 0.07,0.006,0.00024,0.00054 };
-        gainR = { 0.00075,0.00005,0.000035,0.00005 };
+        gainR = { 0.00075,0.00005,0.0035,0.000005 };
         targetA = { 0.7,0.9,0.8,1.5 };
         targetD = { 0.7,0.8,0.3,1.5 };
     }
@@ -59,7 +63,6 @@ struct FMSynthVoice : public SynthesiserVoice
         double cyclesPerSecond = MidiMessage::getMidiNoteInHertz(midiNoteNumber);
         double cyclesPerSample = cyclesPerSecond / getSampleRate();
         angleDelta = cyclesPerSample * 2.0 * double_Pi;
-        printf("sample:%f\n", angleDelta);
     }
 
     void stopNote(float /*velocity*/, bool /*allowTailOff*/) override
@@ -77,19 +80,29 @@ struct FMSynthVoice : public SynthesiserVoice
 
     float wave(double angle)
     {
-        switch(waveform)
+        switch (waveform)
         {
-            case SINE:
-                return std::sin(angle);
-            case SAW:
-                return angle - floor(angle);
-            case TRIANGLE:
-                return 1.0 - fabs(fmod(angle, 2.0) - 1.0);
-            default:
-                return 0;
+        case SINE:
+            return std::sin(angle);
+        case SAW:
+            return angle - floor(angle);
+        case TRIANGLE:
+            return 1.0 - fabs(fmod(angle, 2.0) - 1.0);
+        default:
+            return 0;
         }
     }
-
+    float applyLFO(float signal) {
+        if (freqLFO > 0) {
+            float y = signal*ampLFO*std::sin(angleLFO);
+            //float y = signal*ampLFO*(angleLFO - floor(angleLFO));
+            angleLFO += deltaLFO;
+            return y;
+        }
+        else {
+            return signal;
+        }
+    }
     double applyADSR(unsigned int i)
     {
         switch (state[i])
@@ -119,9 +132,9 @@ struct FMSynthVoice : public SynthesiserVoice
 
     float applyFM()
     {
-        double angle1 = currentAngle * 4;
-        double angle2 = currentAngle/2;
-        double angle3 = currentAngle/8;
+        double angle1 = currentAngle*4;
+        double angle2 = currentAngle/3;
+        double angle3 = currentAngle / 4;
         float y;
         float x = wave(currentAngle);
         switch (model)
@@ -162,7 +175,7 @@ struct FMSynthVoice : public SynthesiserVoice
             {
                 while (--numSamples >= 0)
                 {
-                    const float currentSample = applyFM();
+                    const float currentSample = applyLFO(applyFM());
 
                     for (int i = outputBuffer.getNumChannels(); --i >= 0;)
                         outputBuffer.addSample(i, startSample, currentSample);
@@ -182,7 +195,7 @@ struct FMSynthVoice : public SynthesiserVoice
             {
                 while (--numSamples >= 0)
                 {
-                    const float currentSample = applyFM();
+                    const float currentSample = applyLFO(applyFM());
 
                     for (int i = outputBuffer.getNumChannels(); --i >= 0;)
                         outputBuffer.addSample(i, startSample, currentSample);
@@ -195,10 +208,10 @@ struct FMSynthVoice : public SynthesiserVoice
     }
 
 private:
-    double currentAngle, angleDelta;
+    double currentAngle, angleDelta, ampLFO, angleLFO, deltaLFO, freqLFO;
     std::vector<double> gainA, gainD, gainR, targetA, targetD, level;
     std::vector<char> state;
-    unsigned int model,waveform;
+    unsigned int model, waveform;
 };
 //==============================================================================
 /*
