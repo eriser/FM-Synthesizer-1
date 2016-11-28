@@ -18,9 +18,9 @@ This file was auto-generated!
 #define RELEASE 'R'
 
 // Waveform constants
-#define SINE 0
-#define SAW 1
-#define TRIANGLE 2
+#define SINE 1
+#define SAW 2
+#define TRIANGLE 3
 
 struct FMSynthSound : public SynthesiserSound
 {
@@ -40,13 +40,14 @@ struct FMSynthVoice : public SynthesiserVoice
         freqLFO = 0.5;
         angleLFO = 0;
         deltaLFO = 2 * double_Pi*(freqLFO / getSampleRate());
-        waveform = SINE; // Waveform model
-        model = 3; // Algorithm model
-        gainA = { 0.075,0.00025,0.000104,0.00087 };
-        gainD = { 0.07,0.006,0.00024,0.00054 };
-        gainR = { 0.00075,0.00005,0.0035,0.000005 };
-        targetA = { 0.7,0.9,0.8,1.5 };
-        targetD = { 0.7,0.8,0.3,1.5 };
+        waveform = SAW; // Waveform model
+        model = 1; // Algorithm model
+        gainA = { 0.00001,0.00001,0.00001,0.00001 };
+        gainD = { 0,0,0,0 };
+        gainR = { 0.00001,0.00001,0.00001,0.00001 };
+        targetA = { 0,0,0,0 };
+        targetD = { 0,0,0,0 };
+        toneEnvelope = { 1,1,1,1 };
     }
 
     bool canPlaySound(SynthesiserSound* sound) override
@@ -120,14 +121,30 @@ struct FMSynthVoice : public SynthesiserVoice
     }
 
     void setTargetD(double target, unsigned int envelope) {
-        targetD[envelope] = target;
+        targetD[envelope] = target*targetA[envelope];
     }
 
+    void setAngle(double tone, double semitone, unsigned int envelope) {
+        toneEnvelope[envelope] = pow(2, tone + semitone);
+    }
+
+    void setModel(unsigned int m) {
+        if (1 <= m <= 7) {
+            model = m;
+        }
+    }
+
+    void setWaveform(unsigned int f) {
+        printf("uus:%d\n", f);
+        if (f == SINE || f == SAW || f == TRIANGLE) {
+            waveform = f;
+        }
+    }
 
     float applyLFO(float signal) {
         //float y = signal*(1 - ampLFO*std::sin(angleLFO));
         //float y = signal*(1-ampLFO*(angleLFO - floor(angleLFO)));
-        float y = signal*(1-ampLFO*(1.0 - fabs(fmod(angleLFO, 2.0) - 1.0)));
+        float y = signal*(1 - ampLFO*(1.0 - fabs(fmod(angleLFO, 2.0) - 1.0)));
         angleLFO += deltaLFO;
         return y;
     }
@@ -161,15 +178,16 @@ struct FMSynthVoice : public SynthesiserVoice
 
     float applyFM()
     {
-        double angle1 = currentAngle * 4;
-        double angle2 = currentAngle / 3;
-        double angle3 = currentAngle / 4;
         float y;
-        float x = wave(currentAngle);
+        float angle1 = currentAngle*toneEnvelope[0];
+        float angle2 = currentAngle*toneEnvelope[1];
+        float angle3 = currentAngle*toneEnvelope[2];
+        float angle4 = currentAngle*toneEnvelope[3];
+        float x = wave(angle4);
         switch (model)
         {
         case 1:
-            y = (float)(applyADSR(0)*std::sin(angle1 + applyADSR(1)*std::sin(angle2 + applyADSR(2)*std::sin(angle3 + applyADSR(3)*x))));
+            y = (float)(applyADSR(0)*wave(angle1 + applyADSR(1)*wave(angle2 + applyADSR(2)*wave(angle3 + applyADSR(3)*x))));
             break;
         case 2:
             y = (float)(applyADSR(0)*std::sin(angle1 + applyADSR(1)*std::sin(angle2 + applyADSR(2)*std::sin(angle3) + applyADSR(3)*x)));
@@ -193,6 +211,11 @@ struct FMSynthVoice : public SynthesiserVoice
             y = 0;
             break;
         }
+        printf("l1: %f l2: %f l3: %f l4: %f \n", level[0], level[1], level[2], level[3]);
+        printf("targeta1: %f targeta2: %f targeta3: %f targeta4: %f \n", targetA[0], targetA[1], targetA[2], targetA[3]);
+        printf("targetd1: %f targetd2: %f targetd3: %f targetd4: %f \n", targetD[0], targetD[1], targetD[2], targetD[3]);
+        printf("targetd1: %f targetd2: %f targetd3: %f targetd4: %f \n", targetD[0], targetD[1], targetD[2], targetD[3]);
+        printf("gainr1: %f gainr2: %f gainr3: %f gainr4: %f \n", gainR[0], gainR[1], gainR[2], gainR[3]);
         return y;
     }
 
@@ -238,7 +261,7 @@ struct FMSynthVoice : public SynthesiserVoice
 
 private:
     double currentAngle, angleDelta, ampLFO, angleLFO, deltaLFO, freqLFO;
-    std::vector<double> gainA, gainD, gainR, targetA, targetD, level;
+    std::vector<double> gainA, gainD, gainR, targetA, targetD, level, toneEnvelope;
     std::vector<char> state;
     unsigned int model, waveform;
 };
@@ -309,7 +332,7 @@ public:
         LFOAmp->addListener(this);
 
         addAndMakeVisible(comboBox = new ComboBox("new combo box"));
-        comboBox->setEditableText(true);
+        comboBox->setEditableText(false);
         comboBox->setJustificationType(Justification::centredLeft);
         comboBox->setTextWhenNothingSelected(TRANS("CHOOSE ALGORITHM"));
         comboBox->setTextWhenNoChoicesAvailable(TRANS("(no choices)"));
@@ -328,14 +351,13 @@ public:
         comboBox2->setJustificationType(Justification::centredLeft);
         comboBox2->setTextWhenNothingSelected(TRANS("CHOOSE WAVEFORM"));
         comboBox2->setTextWhenNoChoicesAvailable(TRANS("(no choices)"));
-        comboBox2->addItem(TRANS("SIN"), 1);
-        comboBox2->addItem(TRANS("SGUARE"), 2);
-        comboBox2->addItem(TRANS("SAW"), 3);
-        comboBox2->addItem(TRANS("TRIANGLE"), 4);
+        comboBox2->addItem(TRANS("SIN"), SINE);
+        comboBox2->addItem(TRANS("SAW"), SAW);
+        comboBox2->addItem(TRANS("TRIANGLE"), TRIANGLE);
         comboBox2->addListener(this);
 
         addAndMakeVisible(EG2A = new Slider("EG1A"));
-        EG2A->setRange(0, 10, 0);
+        EG2A->setRange(1, 10, 0);
         EG2A->setSliderStyle(Slider::LinearVertical);
         EG2A->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG2A->addListener(this);
@@ -353,7 +375,7 @@ public:
         EG2S->addListener(this);
 
         addAndMakeVisible(EG2R = new Slider("EG1R"));
-        EG2R->setRange(0, 10, 0);
+        EG2R->setRange(1, 10, 0);
         EG2R->setSliderStyle(Slider::LinearVertical);
         EG2R->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG2R->addListener(this);
@@ -365,23 +387,23 @@ public:
         EG2G->addListener(this);
 
         addAndMakeVisible(EG2TONE = new Slider("EG1G"));
-        EG2TONE->setRange(0, 10, 0);
-        EG2TONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG2TONE->setRange(-3, 3, 1);
+        EG2TONE->setSliderStyle(Slider::Rotary);
         EG2TONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
         EG2TONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
         EG2TONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
         EG2TONE->addListener(this);
 
         addAndMakeVisible(EG2SEMITONE = new Slider("EG1G"));
-        EG2SEMITONE->setRange(0, 10, 0);
-        EG2SEMITONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG2SEMITONE->setRange(0, 0.9, 0.1);
+        EG2SEMITONE->setSliderStyle(Slider::Rotary);
         EG2SEMITONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
         EG2SEMITONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
         EG2SEMITONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
         EG2SEMITONE->addListener(this);
 
         addAndMakeVisible(EG1A = new Slider("EG1A"));
-        EG1A->setRange(0, 10, 0);
+        EG1A->setRange(1, 10, 0);
         EG1A->setSliderStyle(Slider::LinearVertical);
         EG1A->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG1A->addListener(this);
@@ -399,7 +421,7 @@ public:
         EG1S->addListener(this);
 
         addAndMakeVisible(EG1R = new Slider("EG1R"));
-        EG1R->setRange(0, 10, 0);
+        EG1R->setRange(1, 10, 0);
         EG1R->setSliderStyle(Slider::LinearVertical);
         EG1R->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG1R->addListener(this);
@@ -410,42 +432,42 @@ public:
         EG1G->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG1G->addListener(this);
 
-        addAndMakeVisible(EG1TONE = new Slider("EG1G"));
-        EG1TONE->setRange(0, 10, 0);
-        EG1TONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        addAndMakeVisible(EG1TONE = new Slider("EG1TONE"));
+        EG1TONE->setRange(-3, 3, 1);
+        EG1TONE->setSliderStyle(Slider::Rotary);
         EG1TONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
         EG1TONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
         EG1TONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
         EG1TONE->addListener(this);
 
-        addAndMakeVisible(EG1SEMITONE = new Slider("EG1G"));
-        EG1SEMITONE->setRange(0, 10, 0);
-        EG1SEMITONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        addAndMakeVisible(EG1SEMITONE = new Slider("EG1SEMITONE"));
+        EG1SEMITONE->setRange(0, 0.9, 0.1);
+        EG1SEMITONE->setSliderStyle(Slider::Rotary);
         EG1SEMITONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
         EG1SEMITONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
         EG1SEMITONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
         EG1SEMITONE->addListener(this);
 
-        addAndMakeVisible(EG4A = new Slider("EG1A"));
-        EG4A->setRange(0, 10, 0);
+        addAndMakeVisible(EG4A = new Slider("EG4A"));
+        EG4A->setRange(1, 10, 0);
         EG4A->setSliderStyle(Slider::LinearVertical);
         EG4A->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG4A->addListener(this);
 
-        addAndMakeVisible(EG4D = new Slider("EG1D"));
+        addAndMakeVisible(EG4D = new Slider("EG4D"));
         EG4D->setRange(0, 10, 0);
         EG4D->setSliderStyle(Slider::LinearVertical);
         EG4D->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG4D->addListener(this);
 
-        addAndMakeVisible(EG4S = new Slider("EG1S"));
+        addAndMakeVisible(EG4S = new Slider("EG4S"));
         EG4S->setRange(0, 10, 0);
         EG4S->setSliderStyle(Slider::LinearVertical);
         EG4S->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG4S->addListener(this);
 
-        addAndMakeVisible(EG4R = new Slider("EG1R"));
-        EG4R->setRange(0, 10, 0);
+        addAndMakeVisible(EG4R = new Slider("EG4R"));
+        EG4R->setRange(1, 10, 0);
         EG4R->setSliderStyle(Slider::LinearVertical);
         EG4R->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG4R->addListener(this);
@@ -456,29 +478,29 @@ public:
         EG4G->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG4G->addListener(this);
 
-        addAndMakeVisible(EG4TONE = new Slider("EG1G"));
-        EG4TONE->setRange(0, 10, 0);
-        EG4TONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        addAndMakeVisible(EG4TONE = new Slider("EG4TONE"));
+        EG4TONE->setRange(-3, 3, 1);
+        EG4TONE->setSliderStyle(Slider::Rotary);
         EG4TONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
         EG4TONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
         EG4TONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
         EG4TONE->addListener(this);
 
-        addAndMakeVisible(EG4SEMITONE = new Slider("EG1G"));
-        EG4SEMITONE->setRange(0, 10, 0);
-        EG4SEMITONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        addAndMakeVisible(EG4SEMITONE = new Slider("EG4SEMITONE"));
+        EG4SEMITONE->setRange(0, 0.9, 0.1);
+        EG4SEMITONE->setSliderStyle(Slider::Rotary);
         EG4SEMITONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
         EG4SEMITONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
         EG4SEMITONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
         EG4SEMITONE->addListener(this);
 
-        addAndMakeVisible(EG3A = new Slider("EG1A"));
-        EG3A->setRange(0, 10, 0);
+        addAndMakeVisible(EG3A = new Slider("EG3A"));
+        EG3A->setRange(1, 10, 0);
         EG3A->setSliderStyle(Slider::LinearVertical);
         EG3A->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG3A->addListener(this);
 
-        addAndMakeVisible(EG3D = new Slider("EG1D"));
+        addAndMakeVisible(EG3D = new Slider("EG3D"));
         EG3D->setRange(0, 10, 0);
         EG3D->setSliderStyle(Slider::LinearVertical);
         EG3D->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
@@ -491,7 +513,7 @@ public:
         EG3S->addListener(this);
 
         addAndMakeVisible(EG3R = new Slider("EG1R"));
-        EG3R->setRange(0, 10, 0);
+        EG3R->setRange(1, 10, 0);
         EG3R->setSliderStyle(Slider::LinearVertical);
         EG3R->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG3R->addListener(this);
@@ -502,31 +524,30 @@ public:
         EG3G->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG3G->addListener(this);
 
-        addAndMakeVisible(EG3TONE = new Slider("EG1G"));
-        EG3TONE->setRange(0, 10, 0);
-        EG3TONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        addAndMakeVisible(EG3TONE = new Slider("EG3TONE"));
+        EG3TONE->setRange(-3, 3, 1);
+        EG3TONE->setSliderStyle(Slider::Rotary);
         EG3TONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
         EG3TONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
         EG3TONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
         EG3TONE->addListener(this);
 
-        addAndMakeVisible(EG3SEMITONE = new Slider("EG1G"));
-        EG3SEMITONE->setRange(0, 10, 0);
-        EG3SEMITONE->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        addAndMakeVisible(EG3SEMITONE = new Slider("EG3SEMITONE"));
+        EG3SEMITONE->setRange(0, 0.9, 0.1);
+        EG3SEMITONE->setSliderStyle(Slider::Rotary);
         EG3SEMITONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
         EG3SEMITONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
         EG3SEMITONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
         EG3SEMITONE->addListener(this);
 
-        addAndMakeVisible(comboBox3 = new ComboBox("new combo box"));
+        addAndMakeVisible(comboBox3 = new ComboBox("comboBox3"));
         comboBox3->setEditableText(false);
         comboBox3->setJustificationType(Justification::centredLeft);
         comboBox3->setTextWhenNothingSelected(TRANS("CHOOSE WAVEFORM"));
         comboBox3->setTextWhenNoChoicesAvailable(TRANS("(no choices)"));
-        comboBox3->addItem(TRANS("SIN"), 1);
-        comboBox3->addItem(TRANS("SGUARE"), 2);
-        comboBox3->addItem(TRANS("SAW"), 3);
-        comboBox3->addItem(TRANS("TRIANGLE"), 4);
+        comboBox3->addItem(TRANS("SIN"), SINE);
+        comboBox3->addItem(TRANS("SAW"), SAW);
+        comboBox3->addItem(TRANS("TRIANGLE"), TRIANGLE);
         comboBox3->addListener(this);
 
         addAndMakeVisible(keyboardComponent);
@@ -541,7 +562,7 @@ public:
 
         setSize(800, 600);
 
-        setAudioChannels(2, 2); // specify number of input and output channels
+        setAudioChannels(0, 2); // specify number of input and output channels
         keyboardComponent.setBounds(0, 520, 800, 80);
     }
 
@@ -858,6 +879,12 @@ public:
         g.drawText(TRANS("AMP"),
             68, 380, 48, 30,
             Justification::centred, true);
+
+        g.setColour(Colours::black);
+        g.setFont(Font("Myanmar Sangam MN", 25.00f, Font::plain));
+        g.drawText(TRANS("Fm_syna 6002"),
+            440, 460, 256, 36,
+            Justification::centred, true);
     }
 
     void resized() override
@@ -972,143 +999,170 @@ private:
         else if (sliderThatWasMoved == EG2A)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setGainA(EG2A->getValue(), 2);
+                voices[i]->setGainA(EG2A->getValue()/100000, 1);
             }
         }
         else if (sliderThatWasMoved == EG2D)
         {
-            //[UserSliderCode_EG2D] -- add your slider handling code here..
-            //[/UserSliderCode_EG2D]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setGainD(EG2D->getValue()/100000, 1);
+            }
         }
         else if (sliderThatWasMoved == EG2S)
         {
-            //[UserSliderCode_EG2S] -- add your slider handling code here..
-            //[/UserSliderCode_EG2S]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setTargetD(EG2S->getValue()/10, 1);
+            }
         }
         else if (sliderThatWasMoved == EG2R)
         {
-            //[UserSliderCode_EG2R] -- add your slider handling code here..
-            //[/UserSliderCode_EG2R]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setGainR(EG2R->getValue()/100000, 1);
+            }
         }
         else if (sliderThatWasMoved == EG2G)
         {
-            //[UserSliderCode_EG2G] -- add your slider handling code here..
-            //[/UserSliderCode_EG2G]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setTargetA(EG2G->getValue()/10, 1);
+            }
         }
         else if (sliderThatWasMoved == EG2TONE)
         {
-            //[UserSliderCode_EG2TONE] -- add your slider handling code here..
-            //[/UserSliderCode_EG2TONE]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setAngle(EG2TONE->getValue(), EG2SEMITONE->getValue(), 1);
+            }
         }
         else if (sliderThatWasMoved == EG2SEMITONE)
         {
-            //[UserSliderCode_EG2SEMITONE] -- add your slider handling code here..
-            //[/UserSliderCode_EG2SEMITONE]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setAngle(EG2TONE->getValue(), EG2SEMITONE->getValue(), 1);
+            }
         }
         else if (sliderThatWasMoved == EG1A)
         {
-            //[UserSliderCode_EG1A] -- add your slider handling code here..
-            //[/UserSliderCode_EG1A]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setGainA(EG1A->getValue()/100000, 0);
+            }
         }
         else if (sliderThatWasMoved == EG1D)
         {
-            //[UserSliderCode_EG1D] -- add your slider handling code here..
-            //[/UserSliderCode_EG1D]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setGainD(EG1D->getValue()/100000, 0);
+            }
         }
         else if (sliderThatWasMoved == EG1S)
         {
-            //[UserSliderCode_EG1S] -- add your slider handling code here..
-            //[/UserSliderCode_EG1S]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setTargetD(EG1S->getValue() / 10, 0);
+            }
         }
         else if (sliderThatWasMoved == EG1R)
         {
-            //[UserSliderCode_EG1R] -- add your slider handling code here..
-            //[/UserSliderCode_EG1R]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setGainR(EG1R->getValue()/100000, 0);
+            }
         }
         else if (sliderThatWasMoved == EG1G)
         {
-            //[UserSliderCode_EG1G] -- add your slider handling code here..
-            //[/UserSliderCode_EG1G]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setTargetA(EG1G->getValue()/10, 0);
+            }
         }
         else if (sliderThatWasMoved == EG1TONE)
         {
-            //[UserSliderCode_EG1TONE] -- add your slider handling code here..
-            //[/UserSliderCode_EG1TONE]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setAngle(EG1TONE->getValue(), EG1SEMITONE->getValue(), 0);
+            }
         }
         else if (sliderThatWasMoved == EG1SEMITONE)
         {
-            //[UserSliderCode_EG1SEMITONE] -- add your slider handling code here..
-            //[/UserSliderCode_EG1SEMITONE]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setAngle(EG1TONE->getValue(), EG1SEMITONE->getValue(), 0);
+            }
         }
         else if (sliderThatWasMoved == EG4A)
         {
-            //[UserSliderCode_EG4A] -- add your slider handling code here..
-            //[/UserSliderCode_EG4A]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setGainA(EG4A->getValue()/100000, 3);
+            }
         }
         else if (sliderThatWasMoved == EG4D)
         {
-            //[UserSliderCode_EG4D] -- add your slider handling code here..
-            //[/UserSliderCode_EG4D]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setGainD(EG4D->getValue()/10000, 3);
+            }
         }
         else if (sliderThatWasMoved == EG4S)
         {
-            //[UserSliderCode_EG4S] -- add your slider handling code here..
-            //[/UserSliderCode_EG4S]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setTargetD(EG4S->getValue() / 10, 3);
+            }
         }
         else if (sliderThatWasMoved == EG4R)
         {
-            //[UserSliderCode_EG4R] -- add your slider handling code here..
-            //[/UserSliderCode_EG4R]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setGainR(EG4R->getValue()/100000, 3);
+            }
         }
         else if (sliderThatWasMoved == EG4G)
         {
-            //[UserSliderCode_EG4G] -- add your slider handling code here..
-            //[/UserSliderCode_EG4G]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setTargetA(EG4G->getValue()/10, 3);
+            }
         }
         else if (sliderThatWasMoved == EG4TONE)
         {
-            //[UserSliderCode_EG4TONE] -- add your slider handling code here..
-            //[/UserSliderCode_EG4TONE]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setAngle(EG4TONE->getValue(), EG4SEMITONE->getValue(), 3);
+            }
         }
         else if (sliderThatWasMoved == EG4SEMITONE)
         {
-            //[UserSliderCode_EG4SEMITONE] -- add your slider handling code here..
-            //[/UserSliderCode_EG4SEMITONE]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setAngle(EG4TONE->getValue(), EG4SEMITONE->getValue(), 3);
+            }
         }
         else if (sliderThatWasMoved == EG3A)
         {
-            //[UserSliderCode_EG3A] -- add your slider handling code here..
-            //[/UserSliderCode_EG3A]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setGainA(EG3A->getValue()/100000, 2);
+            }
         }
         else if (sliderThatWasMoved == EG3D)
         {
-            //[UserSliderCode_EG3D] -- add your slider handling code here..
-            //[/UserSliderCode_EG3D]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setGainD(EG3D->getValue()/100000, 2);
+            }
         }
         else if (sliderThatWasMoved == EG3S)
         {
-            //[UserSliderCode_EG3S] -- add your slider handling code here..
-            //[/UserSliderCode_EG3S]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setTargetD(EG3S->getValue()/10, 2);
+            }
         }
         else if (sliderThatWasMoved == EG3R)
         {
-            //[UserSliderCode_EG3R] -- add your slider handling code here..
-            //[/UserSliderCode_EG3R]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setGainR(EG3R->getValue()/100000, 2);
+            }
         }
         else if (sliderThatWasMoved == EG3G)
         {
-            //[UserSliderCode_EG3G] -- add your slider handling code here..
-            //[/UserSliderCode_EG3G]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setTargetA(EG3G->getValue()/10, 2);
+            }
         }
         else if (sliderThatWasMoved == EG3TONE)
         {
-            //[UserSliderCode_EG3TONE] -- add your slider handling code here..
-            //[/UserSliderCode_EG3TONE]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setAngle(EG3TONE->getValue(), EG3SEMITONE->getValue(), 2);
+            }
         }
         else if (sliderThatWasMoved == EG3SEMITONE)
         {
-            //[UserSliderCode_EG3SEMITONE] -- add your slider handling code here..
-            //[/UserSliderCode_EG3SEMITONE]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setAngle(EG3TONE->getValue(), EG3SEMITONE->getValue(), 2);
+            }
         }
     }
 
@@ -1120,23 +1174,24 @@ private:
 
         if (comboBoxThatHasChanged == comboBox)
         {
-            //[UserComboBoxCode_comboBox] -- add your combo box handling code here..
-            //[/UserComboBoxCode_comboBox]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setModel(comboBox->getSelectedId());
+            }
         }
         else if (comboBoxThatHasChanged == comboBox2)
         {
-            //[UserComboBoxCode_comboBox2] -- add your combo box handling code here..
-            //[/UserComboBoxCode_comboBox2]
+
         }
         else if (comboBoxThatHasChanged == comboBox3)
         {
-            //[UserComboBoxCode_comboBox3] -- add your combo box handling code here..
-            //[/UserComboBoxCode_comboBox3]
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setWaveform(comboBox3->getSelectedId());
+            }
         }
     }
 
     // These methods handle callbacks from the midi device + on-screen keyboard..
-    void handleIncomingMidiMessage(MidiInput* source, const MidiMessage& message) override
+    void handleIncomingMidiMessage(MidiInput* /*source*/, const MidiMessage& message) override
     {
         const ScopedValueSetter<bool> scopedInputFlag(isAddingFromMidiInput, true);
         keyboardState.processNextMidiEvent(message);

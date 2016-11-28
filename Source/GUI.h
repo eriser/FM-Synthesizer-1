@@ -23,7 +23,11 @@
 //[Headers]     -- You can add your own extra header files here --
 #include "../JuceLibraryCode/JuceHeader.h"
 //[/Headers]
-
+printf("l1: %f l2: %f l3: %f l4: %f \n",level[0],level[1],level[2],level[3]);
+printf("targeta1: %f targeta2: %f targeta3: %f targeta4: %f \n",targetA[0],targetA[1],targetA[2],targetA[3]);
+printf("targetd1: %f targetd2: %f targetd3: %f targetd4: %f \n",targetD[0],targetD[1],targetD[2],targetD[3]);
+printf("targetd1: %f targetd2: %f targetd3: %f targetd4: %f \n",targetD[0],targetD[1],targetD[2],targetD[3]);
+printf("gainR1: %f gainR2: %f gainR3: %f gainR4: %f \n",gainR[0],gainR[1],gainR[2],gainR[3]);
 
 
 //==============================================================================
