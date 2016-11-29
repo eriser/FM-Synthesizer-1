@@ -745,25 +745,25 @@ public:
             Justification::centred, true);
 
         g.setColour(Colours::black);
-        g.setFont(Font(100.00f, Font::plain));
+        g.setFont(Font(95.00f, Font::plain));
         g.drawText(TRANS("1"),
             12, 32, 52, 128,
             Justification::centred, true);
 
         g.setColour(Colours::black);
-        g.setFont(Font(100.00f, Font::plain));
+        g.setFont(Font(95.00f, Font::plain));
         g.drawText(TRANS("4"),
             388, 192, 52, 128,
             Justification::centred, true);
 
         g.setColour(Colours::black);
-        g.setFont(Font(100.00f, Font::plain));
+        g.setFont(Font(95.00f, Font::plain));
         g.drawText(TRANS("2"),
             388, 32, 52, 128,
             Justification::centred, true);
 
         g.setColour(Colours::black);
-        g.setFont(Font(100.00f, Font::plain));
+        g.setFont(Font(95.00f, Font::plain));
         g.drawText(TRANS("3"),
             12, 194, 52, 128,
             Justification::centred, true);
