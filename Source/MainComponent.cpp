@@ -113,8 +113,8 @@ struct FMSynthVoice : public SynthesiserVoice
         toneEnvelope[envelope] = pow(2, tone + semitone);
     }
 
-    void setModel(unsigned int m) {
-        if (1 <= m <= 7) {
+    void setModel(int m) {
+        if (1 <= m && m <= 7) {
             model = m;
         }
     }
@@ -126,8 +126,10 @@ struct FMSynthVoice : public SynthesiserVoice
         }
     }
 
-    void changeStateEG(bool state) {
-        EGisActivated = state;
+    void changeStateEG(int EGstate) {
+        EGisActivated = EGstate;
+        clearCurrentNote();
+        angleDelta = 0.0;
     }
 
     void setLFOWaveform(unsigned int f) {
@@ -144,23 +146,23 @@ struct FMSynthVoice : public SynthesiserVoice
     {
     }
 
-    float wave(double angle)
+    double wave(double angle)
     {
         switch (waveform)
         {
         case SINE:
-            return std::sin(angle);
+            return (float)std::sin(angle);
         case SAW:
-            return angle - floor(angle);
+            return (float)angle - floor(angle);
         case TRIANGLE:
-            return 1.0 - fabs(fmod(angle, 2.0) - 1.0);
+            return (float)1.0 - fabs(fmod(angle, 2.0) - 1.0);
         default:
             return 0;
         }
     }
 
-    float applyLFO(float signal) {
-        float y;
+    double applyLFO(double signal) {
+        double y;
         switch (LFOwaveform) {
         case SINE:
             y = signal*(1 - ampLFO*std::sin(angleLFO));
@@ -171,6 +173,8 @@ struct FMSynthVoice : public SynthesiserVoice
         case TRIANGLE:
             y = signal*(1 - ampLFO*(1.0 - fabs(fmod(angleLFO, 2.0) - 1.0)));
             break;
+        default:
+            y =  signal;
         }
         angleLFO += deltaLFO;
         return y;
@@ -208,14 +212,14 @@ struct FMSynthVoice : public SynthesiserVoice
         }
     }
 
-    float applyFM()
+    double applyFM()
     {
-        float y;
-        float angle1 = currentAngle*toneEnvelope[0];
-        float angle2 = currentAngle*toneEnvelope[1];
-        float angle3 = currentAngle*toneEnvelope[2];
-        float angle4 = currentAngle*toneEnvelope[3];
-        float x = wave(angle4);
+        double y;
+        double angle1 = currentAngle*toneEnvelope[0];
+        double angle2 = currentAngle*toneEnvelope[1];
+        double angle3 = currentAngle*toneEnvelope[2];
+        double angle4 = currentAngle*toneEnvelope[3];
+        double x = wave(angle4);
         switch (model)
         {
         case 1:
@@ -254,7 +258,7 @@ struct FMSynthVoice : public SynthesiserVoice
             {
                 while (--numSamples >= 0)
                 {
-                    const float currentSample = applyLFO(applyFM());
+                    const float currentSample = (float)applyLFO(applyFM());
 
                     for (int i = outputBuffer.getNumChannels(); --i >= 0;)
                         outputBuffer.addSample(i, startSample, currentSample);
@@ -274,7 +278,7 @@ struct FMSynthVoice : public SynthesiserVoice
             {
                 while (--numSamples >= 0)
                 {
-                    const float currentSample = applyLFO(applyFM());
+                    const float currentSample = (float)applyLFO(applyFM());
 
                     for (int i = outputBuffer.getNumChannels(); --i >= 0;)
                         outputBuffer.addSample(i, startSample, currentSample);
@@ -290,8 +294,7 @@ private:
     double currentAngle, angleDelta, ampLFO, angleLFO, deltaLFO, freqLFO;
     std::vector<double> gainA, gainD, gainR, targetA, targetD, level, toneEnvelope;
     std::vector<char> state;
-    unsigned int model, waveform, LFOwaveform;
-    bool EGisActivated;
+    unsigned int model, waveform, LFOwaveform, EGisActivated;
 };
 //==============================================================================
 /*
@@ -1178,7 +1181,7 @@ private:
         }
         else if (sliderThatWasMoved == EG_ON_OFF) {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->changeStateEG(EG_ON_OFF->getValue());
+                voices[i]->changeStateEG(((int)EG_ON_OFF->getValue()));
             }
         }
     }
