@@ -367,9 +367,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\Source\GUI.cpp">
-      <Filter>FM-Synthesizer\Source</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Source\MainComponent.cpp">
       <Filter>FM-Synthesizer\Source</Filter>
     </ClCompile>
@@ -2103,9 +2100,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\Source\GUI.h">
-      <Filter>FM-Synthesizer\Source</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\..\Applications\JUCE\modules\juce_audio_basics\buffers\juce_AudioChannelSet.h">
       <Filter>Juce Modules\juce_audio_basics\buffers</Filter>
     </ClInclude>
