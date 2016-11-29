@@ -36,11 +36,13 @@ struct FMSynthVoice : public SynthesiserVoice
 
     FMSynthVoice() : currentAngle(0), angleDelta(0), level(0)
     {
+        EGisActivated = false;
         ampLFO = 0;
         freqLFO = 0.5;
         angleLFO = 0;
+        LFOwaveform = SINE; // LFO waveform model
         deltaLFO = 2 * double_Pi*(freqLFO / getSampleRate());
-        waveform = SAW; // Waveform model
+        waveform = SINE; // Waveform model
         model = 1; // Algorithm model
         gainA = { 0.00001,0.00001,0.00001,0.00001 };
         gainD = { 0,0,0,0 };
@@ -64,34 +66,6 @@ struct FMSynthVoice : public SynthesiserVoice
         double cyclesPerSecond = MidiMessage::getMidiNoteInHertz(midiNoteNumber);
         double cyclesPerSample = cyclesPerSecond / getSampleRate();
         angleDelta = cyclesPerSample * 2.0 * double_Pi;
-    }
-
-    void stopNote(float /*velocity*/, bool /*allowTailOff*/) override
-    {
-        state = { RELEASE,RELEASE,RELEASE,RELEASE };
-    }
-
-    void pitchWheelMoved(int /*newValue*/) override
-    {
-    }
-
-    void controllerMoved(int /*controllerNumber*/, int /*newValue*/) override
-    {
-    }
-
-    float wave(double angle)
-    {
-        switch (waveform)
-        {
-        case SINE:
-            return std::sin(angle);
-        case SAW:
-            return angle - floor(angle);
-        case TRIANGLE:
-            return 1.0 - fabs(fmod(angle, 2.0) - 1.0);
-        default:
-            return 0;
-        }
     }
 
     void setFreqLFO(double freq) {
@@ -141,39 +115,91 @@ struct FMSynthVoice : public SynthesiserVoice
         }
     }
 
+    void changeStateEG(bool state) {
+        EGisActivated = state;
+    }
+
+    void setLFOWaveform(unsigned int f) {
+        if (f == SINE || f == SAW || f == TRIANGLE) {
+            LFOwaveform = f;
+        }
+    }
+
+    void stopNote(float /*velocity*/, bool /*allowTailOff*/) override
+    {
+        state = { RELEASE,RELEASE,RELEASE,RELEASE };
+    }
+
+    void pitchWheelMoved(int /*newValue*/) override
+    {
+    }
+
+    void controllerMoved(int /*controllerNumber*/, int /*newValue*/) override
+    {
+    }
+
+    float wave(double angle)
+    {
+        switch (waveform)
+        {
+        case SINE:
+            return std::sin(angle);
+        case SAW:
+            return angle - floor(angle);
+        case TRIANGLE:
+            return 1.0 - fabs(fmod(angle, 2.0) - 1.0);
+        default:
+            return 0;
+        }
+    }
+
     float applyLFO(float signal) {
-        //float y = signal*(1 - ampLFO*std::sin(angleLFO));
-        //float y = signal*(1-ampLFO*(angleLFO - floor(angleLFO)));
-        float y = signal*(1 - ampLFO*(1.0 - fabs(fmod(angleLFO, 2.0) - 1.0)));
+        float y;
+        switch (LFOwaveform) {
+        case SINE:
+            y = signal*(1 - ampLFO*std::sin(angleLFO));
+            break;
+        case SAW:
+            y = signal*(1 - ampLFO*(angleLFO - floor(angleLFO)));
+            break;
+        case TRIANGLE:
+            y = signal*(1 - ampLFO*(1.0 - fabs(fmod(angleLFO, 2.0) - 1.0)));
+            break;
+        }
         angleLFO += deltaLFO;
         return y;
     }
 
     double applyADSR(unsigned int i)
     {
-        switch (state[i])
-        {
-        case ATTACK: // Attack phase in the Envelope Generator
-            level[i] = targetA[i] * gainA[i] + (1 - gainA[i])*level[i];
-            if (fabs(level[i] - targetA[i]) <= 0.01)
+        if (EGisActivated) {
+            switch (state[i])
             {
-                state[i] = DECAY;
+            case ATTACK: // Attack phase in the Envelope Generator
+                level[i] = targetA[i] * gainA[i] + (1 - gainA[i])*level[i];
+                if (fabs(level[i] - targetA[i]) <= 0.01)
+                {
+                    state[i] = DECAY;
+                }
+                break;
+            case DECAY: // Decay phase in the Envelope Generator
+                level[i] = targetD[i] * gainD[i] + (1 - gainD[i])*level[i];
+                if (fabs(level[i] - targetD[i]) <= 0.01)
+                {
+                    state[i] = SUSTAIN;
+                }
+                break;
+            case SUSTAIN: // Sustain phase in the Envelope Generator
+                break;
+            case RELEASE: // Release phase in the Envelope Generator
+                level[i] = (1 - gainR[i])*level[i];
+                break;
             }
-            break;
-        case DECAY: // Decay phase in the Envelope Generator
-            level[i] = targetD[i] * gainD[i] + (1 - gainD[i])*level[i];
-            if (fabs(level[i] - targetD[i]) <= 0.01)
-            {
-                state[i] = SUSTAIN;
-            }
-            break;
-        case SUSTAIN: // Sustain phase in the Envelope Generator
-            break;
-        case RELEASE: // Release phase in the Envelope Generator
-            level[i] = (1 - gainR[i])*level[i];
-            break;
+            return level[i];
         }
-        return level[i];
+        else {
+            return 1;
+        }
     }
 
     float applyFM()
@@ -187,7 +213,7 @@ struct FMSynthVoice : public SynthesiserVoice
         switch (model)
         {
         case 1:
-            y = (float)(applyADSR(0)*wave(angle1 + applyADSR(1)*wave(angle2 + applyADSR(2)*wave(angle3 + applyADSR(3)*x))));
+            y = (float)(applyADSR(0)*std::sin(angle1 + applyADSR(1)*std::sin(angle2 + applyADSR(2)*std::sin(angle3 + applyADSR(3)*x))));
             break;
         case 2:
             y = (float)(applyADSR(0)*std::sin(angle1 + applyADSR(1)*std::sin(angle2 + applyADSR(2)*std::sin(angle3) + applyADSR(3)*x)));
@@ -211,11 +237,6 @@ struct FMSynthVoice : public SynthesiserVoice
             y = 0;
             break;
         }
-        printf("l1: %f l2: %f l3: %f l4: %f \n", level[0], level[1], level[2], level[3]);
-        printf("targeta1: %f targeta2: %f targeta3: %f targeta4: %f \n", targetA[0], targetA[1], targetA[2], targetA[3]);
-        printf("targetd1: %f targetd2: %f targetd3: %f targetd4: %f \n", targetD[0], targetD[1], targetD[2], targetD[3]);
-        printf("targetd1: %f targetd2: %f targetd3: %f targetd4: %f \n", targetD[0], targetD[1], targetD[2], targetD[3]);
-        printf("gainr1: %f gainr2: %f gainr3: %f gainr4: %f \n", gainR[0], gainR[1], gainR[2], gainR[3]);
         return y;
     }
 
@@ -263,7 +284,8 @@ private:
     double currentAngle, angleDelta, ampLFO, angleLFO, deltaLFO, freqLFO;
     std::vector<double> gainA, gainD, gainR, targetA, targetD, level, toneEnvelope;
     std::vector<char> state;
-    unsigned int model, waveform;
+    unsigned int model, waveform, LFOwaveform;
+    bool EGisActivated;
 };
 //==============================================================================
 /*
@@ -359,6 +381,7 @@ public:
         addAndMakeVisible(EG2A = new Slider("EG1A"));
         EG2A->setRange(1, 10, 0);
         EG2A->setSliderStyle(Slider::LinearVertical);
+        EG2A->setSkewFactor(0.5);
         EG2A->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG2A->addListener(this);
 
@@ -539,6 +562,14 @@ public:
         EG3SEMITONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
         EG3SEMITONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
         EG3SEMITONE->addListener(this);
+        
+        addAndMakeVisible(EG_ON_OFF = new Slider("EG_ON_OFF"));
+        EG_ON_OFF->setRange(0, 1, 1);
+        EG_ON_OFF->setSliderStyle(Slider::Rotary);
+        EG_ON_OFF->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
+        EG_ON_OFF->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
+        EG_ON_OFF->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
+        EG_ON_OFF->addListener(this);
 
         addAndMakeVisible(comboBox3 = new ComboBox("comboBox3"));
         comboBox3->setEditableText(false);
@@ -604,6 +635,7 @@ public:
         EG3G = nullptr;
         EG3TONE = nullptr;
         EG3SEMITONE = nullptr;
+        EG_ON_OFF = nullptr;
         comboBox3 = nullptr;
     }
 
@@ -928,6 +960,7 @@ public:
         EG3G->setBounds(304, 216, 40, 48);
         EG3TONE->setBounds(56, 192, 64, 56);
         EG3SEMITONE->setBounds(56, 248, 64, 56);
+        EG_ON_OFF->setBounds(312, 392, 64, 56);
         comboBox3->setBounds(584, 424, 136, 24);
     }
 
@@ -999,31 +1032,31 @@ private:
         else if (sliderThatWasMoved == EG2A)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setGainA(EG2A->getValue()/100000, 1);
+                voices[i]->setGainA(EG2A->getValue() / 10000, 1);
             }
         }
         else if (sliderThatWasMoved == EG2D)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setGainD(EG2D->getValue()/100000, 1);
+                voices[i]->setGainD(EG2D->getValue() / 100000, 1);
             }
         }
         else if (sliderThatWasMoved == EG2S)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setTargetD(EG2S->getValue()/10, 1);
+                voices[i]->setTargetD(EG2S->getValue() / 10, 1);
             }
         }
         else if (sliderThatWasMoved == EG2R)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setGainR(EG2R->getValue()/100000, 1);
+                voices[i]->setGainR(EG2R->getValue() / 100000, 1);
             }
         }
         else if (sliderThatWasMoved == EG2G)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setTargetA(EG2G->getValue()/10, 1);
+                voices[i]->setTargetA(EG2G->getValue() / 10, 1);
             }
         }
         else if (sliderThatWasMoved == EG2TONE)
@@ -1041,13 +1074,13 @@ private:
         else if (sliderThatWasMoved == EG1A)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setGainA(EG1A->getValue()/100000, 0);
+                voices[i]->setGainA(EG1A->getValue() / 10000, 0);
             }
         }
         else if (sliderThatWasMoved == EG1D)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setGainD(EG1D->getValue()/100000, 0);
+                voices[i]->setGainD(EG1D->getValue() / 100000, 0);
             }
         }
         else if (sliderThatWasMoved == EG1S)
@@ -1059,13 +1092,13 @@ private:
         else if (sliderThatWasMoved == EG1R)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setGainR(EG1R->getValue()/100000, 0);
+                voices[i]->setGainR(EG1R->getValue() / 100000, 0);
             }
         }
         else if (sliderThatWasMoved == EG1G)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setTargetA(EG1G->getValue()/10, 0);
+                voices[i]->setTargetA(EG1G->getValue() / 10, 0);
             }
         }
         else if (sliderThatWasMoved == EG1TONE)
@@ -1083,13 +1116,13 @@ private:
         else if (sliderThatWasMoved == EG4A)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setGainA(EG4A->getValue()/100000, 3);
+                voices[i]->setGainA(EG4A->getValue() / 10000, 3);
             }
         }
         else if (sliderThatWasMoved == EG4D)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setGainD(EG4D->getValue()/10000, 3);
+                voices[i]->setGainD(EG4D->getValue() / 10000, 3);
             }
         }
         else if (sliderThatWasMoved == EG4S)
@@ -1101,13 +1134,13 @@ private:
         else if (sliderThatWasMoved == EG4R)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setGainR(EG4R->getValue()/100000, 3);
+                voices[i]->setGainR(EG4R->getValue() / 100000, 3);
             }
         }
         else if (sliderThatWasMoved == EG4G)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setTargetA(EG4G->getValue()/10, 3);
+                voices[i]->setTargetA(EG4G->getValue() / 10, 3);
             }
         }
         else if (sliderThatWasMoved == EG4TONE)
@@ -1125,31 +1158,31 @@ private:
         else if (sliderThatWasMoved == EG3A)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setGainA(EG3A->getValue()/100000, 2);
+                voices[i]->setGainA(EG3A->getValue() / 10000, 2);
             }
         }
         else if (sliderThatWasMoved == EG3D)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setGainD(EG3D->getValue()/100000, 2);
+                voices[i]->setGainD(EG3D->getValue() / 100000, 2);
             }
         }
         else if (sliderThatWasMoved == EG3S)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setTargetD(EG3S->getValue()/10, 2);
+                voices[i]->setTargetD(EG3S->getValue() / 10, 2);
             }
         }
         else if (sliderThatWasMoved == EG3R)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setGainR(EG3R->getValue()/100000, 2);
+                voices[i]->setGainR(EG3R->getValue() / 100000, 2);
             }
         }
         else if (sliderThatWasMoved == EG3G)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setTargetA(EG3G->getValue()/10, 2);
+                voices[i]->setTargetA(EG3G->getValue() / 10, 2);
             }
         }
         else if (sliderThatWasMoved == EG3TONE)
@@ -1162,6 +1195,11 @@ private:
         {
             for (unsigned int i = 0; i<4; i++) {
                 voices[i]->setAngle(EG3TONE->getValue(), EG3SEMITONE->getValue(), 2);
+            }
+        }
+        else if (sliderThatWasMoved == EG_ON_OFF) {
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->changeStateEG(EG_ON_OFF->getValue());
             }
         }
     }
@@ -1180,7 +1218,9 @@ private:
         }
         else if (comboBoxThatHasChanged == comboBox2)
         {
-
+            for (unsigned int i = 0; i<4; i++) {
+                voices[i]->setLFOWaveform(comboBox2->getSelectedId());
+            }
         }
         else if (comboBoxThatHasChanged == comboBox3)
         {
@@ -1307,6 +1347,7 @@ private:
     ScopedPointer<Slider> EG3G;
     ScopedPointer<Slider> EG3TONE;
     ScopedPointer<Slider> EG3SEMITONE;
+    ScopedPointer<Slider> EG_ON_OFF;
     ScopedPointer<ComboBox> comboBox3;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainContentComponent)
 };
