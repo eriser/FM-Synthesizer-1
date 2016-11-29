@@ -2100,11 +2100,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-<<<<<<< HEAD
     <ClInclude Include="..\..\..\..\..\Applications\JUCE\modules\juce_audio_basics\buffers\juce_AudioChannelSet.h">
-=======
-    <ClInclude Include="..\..\..\..\..\..\Applications\JUCE\modules\juce_audio_basics\buffers\juce_AudioChannelSet.h">
->>>>>>> 26381912ad7d81f065488a6796715be9e820ac15
       <Filter>Juce Modules\juce_audio_basics\buffers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\Applications\JUCE\modules\juce_audio_basics\buffers\juce_AudioDataConverters.h">
