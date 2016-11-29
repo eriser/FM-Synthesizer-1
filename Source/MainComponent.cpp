@@ -593,7 +593,7 @@ public:
 
         setSize(800, 600);
 
-        setAudioChannels(0, 2); // specify number of input and output channels
+        setAudioChannels(2, 2); // specify number of input and output channels
     }
 
     ~MainContentComponent()
