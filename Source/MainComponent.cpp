@@ -43,7 +43,7 @@ struct FMSynthVoice : public SynthesiserVoice
         LFOwaveform = SINE; // LFO waveform model
         deltaLFO = 2 * double_Pi*(freqLFO / getSampleRate());
         waveform = SINE; // Waveform model
-        model = 1; // Algorithm model
+        model = 7; // Algorithm model
         gainA = { 0.00001,0.00001,0.00001,0.00001 };
         gainD = { 0,0,0,0 };
         gainR = { 0.00001,0.00001,0.00001,0.00001 };
