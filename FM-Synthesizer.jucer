@@ -5,8 +5,6 @@
               jucerVersion="4.3.0">
   <MAINGROUP id="BwXURP" name="FM-Synthesizer">
     <GROUP id="{9D9B98C9-D067-1D4E-C359-61D196B8CFBC}" name="Source">
-      <FILE id="H45aTl" name="GUI.cpp" compile="1" resource="0" file="Source/GUI.cpp"/>
-      <FILE id="BHh0Op" name="GUI.h" compile="0" resource="0" file="Source/GUI.h"/>
       <FILE id="WMdKmk" name="MainComponent.cpp" compile="1" resource="0"
             file="Source/MainComponent.cpp"/>
       <FILE id="WAE7B6" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>

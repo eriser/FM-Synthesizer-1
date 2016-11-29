@@ -198,7 +198,7 @@ struct FMSynthVoice : public SynthesiserVoice
             return level[i];
         }
         else {
-            return 1;
+            return targetA[i];
         }
     }
 
@@ -326,21 +326,10 @@ public:
             }
         }
 
-        // if no enabled devices were found just use the first one in the list
         if (midiInputList.getSelectedId() == 0)
             setMidiInput(0);
         deviceManager.addMidiInputCallback(String(), &(midiCollector));
 
-        /*addAndMakeVisible(midiMessagesBox);
-        midiMessagesBox.setMultiLine(true);
-        midiMessagesBox.setReturnKeyStartsNewLine(true);
-        midiMessagesBox.setReadOnly(true);
-        midiMessagesBox.setScrollbarsShown(true);
-        midiMessagesBox.setCaretVisible(false);
-        midiMessagesBox.setPopupMenuEnabled(true);
-        midiMessagesBox.setColour(TextEditor::backgroundColourId, Colour(0x32ffffff));
-        midiMessagesBox.setColour(TextEditor::outlineColourId, Colour(0x1c000000));
-        midiMessagesBox.setColour(TextEditor::shadowColourId, Colour(0x16000000));*/
         addAndMakeVisible(LFOFreq = new Slider("LFOFreq"));
         LFOFreq->setRange(0.5, 10, 0);
         LFOFreq->setSliderStyle(Slider::LinearVertical);
@@ -353,7 +342,7 @@ public:
         LFOAmp->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         LFOAmp->addListener(this);
 
-        addAndMakeVisible(comboBox = new ComboBox("new combo box"));
+        addAndMakeVisible(comboBox = new ComboBox("comboBox"));
         comboBox->setEditableText(false);
         comboBox->setJustificationType(Justification::centredLeft);
         comboBox->setTextWhenNothingSelected(TRANS("CHOOSE ALGORITHM"));
@@ -378,38 +367,38 @@ public:
         comboBox2->addItem(TRANS("TRIANGLE"), TRIANGLE);
         comboBox2->addListener(this);
 
-        addAndMakeVisible(EG2A = new Slider("EG1A"));
+        addAndMakeVisible(EG2A = new Slider("EG2A"));
         EG2A->setRange(1, 10, 0);
         EG2A->setSliderStyle(Slider::LinearVertical);
         EG2A->setSkewFactor(0.5);
         EG2A->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG2A->addListener(this);
 
-        addAndMakeVisible(EG2D = new Slider("EG1D"));
+        addAndMakeVisible(EG2D = new Slider("EG2D"));
         EG2D->setRange(0, 10, 0);
         EG2D->setSliderStyle(Slider::LinearVertical);
         EG2D->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG2D->addListener(this);
 
-        addAndMakeVisible(EG2S = new Slider("EG1S"));
+        addAndMakeVisible(EG2S = new Slider("EG2S"));
         EG2S->setRange(0, 10, 0);
         EG2S->setSliderStyle(Slider::LinearVertical);
         EG2S->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG2S->addListener(this);
 
-        addAndMakeVisible(EG2R = new Slider("EG1R"));
+        addAndMakeVisible(EG2R = new Slider("EG2R"));
         EG2R->setRange(1, 10, 0);
         EG2R->setSliderStyle(Slider::LinearVertical);
         EG2R->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG2R->addListener(this);
 
-        addAndMakeVisible(EG2G = new Slider("EG1G"));
+        addAndMakeVisible(EG2G = new Slider("EG2G"));
         EG2G->setRange(0, 10, 0);
-        EG2G->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG2G->setSliderStyle(Slider::Rotary);
         EG2G->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG2G->addListener(this);
 
-        addAndMakeVisible(EG2TONE = new Slider("EG1G"));
+        addAndMakeVisible(EG2TONE = new Slider("EG2TONE"));
         EG2TONE->setRange(-3, 3, 1);
         EG2TONE->setSliderStyle(Slider::Rotary);
         EG2TONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
@@ -417,7 +406,7 @@ public:
         EG2TONE->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
         EG2TONE->addListener(this);
 
-        addAndMakeVisible(EG2SEMITONE = new Slider("EG1G"));
+        addAndMakeVisible(EG2SEMITONE = new Slider("EG2SEMITONE"));
         EG2SEMITONE->setRange(0, 0.9, 0.1);
         EG2SEMITONE->setSliderStyle(Slider::Rotary);
         EG2SEMITONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
@@ -451,7 +440,7 @@ public:
 
         addAndMakeVisible(EG1G = new Slider("EG1G"));
         EG1G->setRange(0, 10, 0);
-        EG1G->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG1G->setSliderStyle(Slider::Rotary);
         EG1G->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG1G->addListener(this);
 
@@ -495,9 +484,9 @@ public:
         EG4R->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG4R->addListener(this);
 
-        addAndMakeVisible(EG4G = new Slider("EG1G"));
+        addAndMakeVisible(EG4G = new Slider("EG4G"));
         EG4G->setRange(0, 10, 0);
-        EG4G->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG4G->setSliderStyle(Slider::Rotary);
         EG4G->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG4G->addListener(this);
 
@@ -529,21 +518,21 @@ public:
         EG3D->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG3D->addListener(this);
 
-        addAndMakeVisible(EG3S = new Slider("EG1S"));
+        addAndMakeVisible(EG3S = new Slider("EG3S"));
         EG3S->setRange(0, 10, 0);
         EG3S->setSliderStyle(Slider::LinearVertical);
         EG3S->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG3S->addListener(this);
 
-        addAndMakeVisible(EG3R = new Slider("EG1R"));
+        addAndMakeVisible(EG3R = new Slider("EG3R"));
         EG3R->setRange(1, 10, 0);
         EG3R->setSliderStyle(Slider::LinearVertical);
         EG3R->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG3R->addListener(this);
 
-        addAndMakeVisible(EG3G = new Slider("EG1G"));
+        addAndMakeVisible(EG3G = new Slider("EG3G"));
         EG3G->setRange(0, 10, 0);
-        EG3G->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        EG3G->setSliderStyle(Slider::Rotary);
         EG3G->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG3G->addListener(this);
 
@@ -566,7 +555,7 @@ public:
         addAndMakeVisible(EG_ON_OFF = new Slider("EG_ON_OFF"));
         EG_ON_OFF->setRange(0, 1, 1);
         EG_ON_OFF->setSliderStyle(Slider::Rotary);
-        EG_ON_OFF->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
+        EG_ON_OFF->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG_ON_OFF->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
         EG_ON_OFF->setColour(Slider::textBoxOutlineColourId, Colour(0x00808080));
         EG_ON_OFF->addListener(this);
@@ -594,7 +583,6 @@ public:
         setSize(800, 600);
 
         setAudioChannels(0, 2); // specify number of input and output channels
-        keyboardComponent.setBounds(0, 520, 800, 80);
     }
 
     ~MainContentComponent()
@@ -671,14 +659,14 @@ public:
     void paint(Graphics& g) override
     {
         // You can add your drawing code here!
-        g.fillAll(Colours::white);
+        g.fillAll(Colours::grey);
 
         g.setGradientFill(ColourGradient(Colour(0xffbebebf),
             50.0f, 0.0f,
             Colour(0xff67696a),
             104.0f, 512.0f,
             false));
-        g.fillRect(-12, 0, 800, 600);
+        g.fillRect(0, 0, 800, 600);
 
         g.setGradientFill(ColourGradient(Colour(0xff939395),
             384.0f, 96.0f,
@@ -917,6 +905,12 @@ public:
         g.drawText(TRANS("Fm_syna 6002"),
             440, 460, 256, 36,
             Justification::centred, true);
+
+        g.setColour(Colours::black);
+        g.setFont(Font("Myanmar Sangam MN", 20.00f, Font::plain));
+        g.drawText(TRANS("EG ON/OFF"),
+            225, 460, 256, 36,
+            Justification::centred, true);
     }
 
     void resized() override
@@ -925,7 +919,7 @@ public:
         // If you add any child components, this is where you should
         // update their positions.
         Rectangle<int> area(getLocalBounds());
-        midiInputList.setBounds(area.removeFromTop(36).removeFromRight(getWidth() - 150).reduced(8));
+        midiInputList.setBounds(100,10,500,15);
         keyboardComponent.setBounds(0, 520, 800, 80);
         midiMessagesBox.setBounds(area.reduced(8));
         LFOFreq->setBounds(48, 384, 24, 112);
@@ -960,43 +954,13 @@ public:
         EG3G->setBounds(304, 216, 40, 48);
         EG3TONE->setBounds(56, 192, 64, 56);
         EG3SEMITONE->setBounds(56, 248, 64, 56);
-        EG_ON_OFF->setBounds(312, 392, 64, 56);
+        EG_ON_OFF->setBounds(312, 410, 64, 56);
         comboBox3->setBounds(584, 424, 136, 24);
     }
 
 
 private:
     //==============================================================================
-    /*static String getMidiMessageDescription(const MidiMessage& m)
-    {
-    if (m.isNoteOn())           return "Note on " + MidiMessage::getMidiNoteName(m.getNoteNumber(), true, true, 3);
-    if (m.isNoteOff())          return "Note off " + MidiMessage::getMidiNoteName(m.getNoteNumber(), true, true, 3);
-    if (m.isProgramChange())    return "Program change " + String(m.getProgramChangeNumber());
-    if (m.isPitchWheel())       return "Pitch wheel " + String(m.getPitchWheelValue());
-    if (m.isAftertouch())       return "After touch " + MidiMessage::getMidiNoteName(m.getNoteNumber(), true, true, 3) + ": " + String(m.getAfterTouchValue());
-    if (m.isChannelPressure())  return "Channel pressure " + String(m.getChannelPressureValue());
-    if (m.isAllNotesOff())      return "All notes off";
-    if (m.isAllSoundOff())      return "All sound off";
-    if (m.isMetaEvent())        return "Meta event";
-
-    if (m.isController())
-    {
-    String name(MidiMessage::getControllerName(m.getControllerNumber()));
-
-    if (name.isEmpty())
-    name = "[" + String(m.getControllerNumber()) + "]";
-
-    return "Controller " + name + ": " + String(m.getControllerValue());
-    }
-
-    return String::toHexString(m.getRawData(), m.getRawDataSize());
-    }*/
-
-    /*void logMessage(const String& m)
-    {
-    midiMessagesBox.moveCaretToEnd();
-    midiMessagesBox.insertTextAtCaret(m + newLine);
-    }*/
 
     /** Starts listening to a MIDI input device, enabling it if necessary. */
     void setMidiInput(int index)
@@ -1257,51 +1221,6 @@ private:
             //postMessageToList(m, "On-Screen Keyboard");
         }
     }
-
-    // This is used to dispach an incoming message to the message thread
-    /*class IncomingMessageCallback : public CallbackMessage
-    {
-    public:
-    IncomingMessageCallback(MainContentComponent* o, const MidiMessage& m, const String& s)
-    : owner(o), message(m), source(s)
-    {}
-
-    void messageCallback() override
-    {
-    if (owner != nullptr)
-    owner->addMessageToList(message, source);
-    }
-
-    Component::SafePointer<MainContentComponent> owner;
-    MidiMessage message;
-    String source;
-    };*/
-
-    /*void postMessageToList(const MidiMessage& message, const String& source)
-    {
-    (new IncomingMessageCallback(this, message, source))->post();
-    }*/
-
-    /*void addMessageToList(const MidiMessage& message, const String& source)
-    {
-    const double time = message.getTimeStamp() - startTime;
-
-    const int hours = ((int)(time / 3600.0)) % 24;
-    const int minutes = ((int)(time / 60.0)) % 60;
-    const int seconds = ((int)time) % 60;
-    const int millis = ((int)(time * 1000.0)) % 1000;
-
-    const String timecode(String::formatted("%02d:%02d:%02d.%03d",
-    hours,
-    minutes,
-    seconds,
-    millis));
-
-    const String description(getMidiMessageDescription(message));
-
-    const String midiMessageString(timecode + "  -  " + description + " (" + source + ")"); // [7]
-    logMessage(midiMessageString);
-    }*/
 
     MidiMessageCollector midiCollector;
     AudioDeviceManager deviceManager;
