@@ -79,6 +79,8 @@ struct FMSynthVoice : public SynthesiserVoice
         }
     }
 
+    //Setters needed in handling slider values
+
     void setFreqLFO(double freq) {
         freqLFO = freq;
         angleLFO = 0;
@@ -120,7 +122,6 @@ struct FMSynthVoice : public SynthesiserVoice
     }
 
     void setWaveform(unsigned int f) {
-        printf("uus:%d\n", f);
         if (f == SINE || f == SAW || f == TRIANGLE) {
             waveform = f;
         }
@@ -140,12 +141,15 @@ struct FMSynthVoice : public SynthesiserVoice
 
     void pitchWheelMoved(int /*newValue*/) override
     {
+        //Not implemented
     }
 
     void controllerMoved(int /*controllerNumber*/, int /*newValue*/) override
     {
+        //Not implemented
     }
 
+    // Returns the angle value for the current waveform
     double wave(double angle)
     {
         switch (waveform)
@@ -161,6 +165,7 @@ struct FMSynthVoice : public SynthesiserVoice
         }
     }
 
+    // Applies LFO to the input signal
     double applyLFO(double signal) {
         double y;
         switch (LFOwaveform) {
@@ -174,12 +179,13 @@ struct FMSynthVoice : public SynthesiserVoice
             y = signal*(1 - ampLFO*(1.0 - fabs(fmod(angleLFO, 2.0) - 1.0)));
             break;
         default:
-            y =  signal;
+            y = signal;
         }
         angleLFO += deltaLFO;
         return y;
     }
 
+    // Apllies EG to an oscillator indicated by parameter i
     double applyADSR(unsigned int i)
     {
         if (EGisActivated) {
@@ -200,6 +206,9 @@ struct FMSynthVoice : public SynthesiserVoice
                 }
                 break;
             case SUSTAIN: // Sustain phase in the Envelope Generator
+                if (fabs(level[i]) <= 0.01){
+                    level[i] = 0;
+                }
                 break;
             case RELEASE: // Release phase in the Envelope Generator
                 level[i] = (1 - gainR[i])*level[i];
@@ -212,6 +221,7 @@ struct FMSynthVoice : public SynthesiserVoice
         }
     }
 
+    // Applies FM modulation to the input signal and oscillators
     double applyFM()
     {
         double y;
@@ -250,6 +260,7 @@ struct FMSynthVoice : public SynthesiserVoice
         return y;
     }
 
+    // Renders the next playable audiobuffer
     void renderNextBlock(AudioSampleBuffer& outputBuffer, int startSample, int numSamples) override
     {
         if (angleDelta != 0.0)
@@ -405,6 +416,7 @@ public:
 
         addAndMakeVisible(EG2G = new Slider("EG2G"));
         EG2G->setRange(0, 10, 0);
+        EG2G->setValue(5);
         EG2G->setSliderStyle(Slider::Rotary);
         EG2G->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG2G->addListener(this);
@@ -418,7 +430,7 @@ public:
         EG2TONE->addListener(this);
 
         addAndMakeVisible(EG2SEMITONE = new Slider("EG2SEMITONE"));
-        EG2SEMITONE->setRange(0, 0.9, 0.1);
+        EG2SEMITONE->setRange(0, 11, 1);
         EG2SEMITONE->setSliderStyle(Slider::Rotary);
         EG2SEMITONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
         EG2SEMITONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
@@ -451,6 +463,7 @@ public:
 
         addAndMakeVisible(EG1G = new Slider("EG1G"));
         EG1G->setRange(0, 10, 0);
+        EG1G->setValue(5);
         EG1G->setSliderStyle(Slider::Rotary);
         EG1G->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG1G->addListener(this);
@@ -464,7 +477,7 @@ public:
         EG1TONE->addListener(this);
 
         addAndMakeVisible(EG1SEMITONE = new Slider("EG1SEMITONE"));
-        EG1SEMITONE->setRange(0, 0.9, 0.1);
+        EG1SEMITONE->setRange(0, 11, 1);
         EG1SEMITONE->setSliderStyle(Slider::Rotary);
         EG1SEMITONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
         EG1SEMITONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
@@ -497,6 +510,7 @@ public:
 
         addAndMakeVisible(EG4G = new Slider("EG4G"));
         EG4G->setRange(0, 10, 0);
+        EG4G->setValue(5);
         EG4G->setSliderStyle(Slider::Rotary);
         EG4G->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG4G->addListener(this);
@@ -510,7 +524,7 @@ public:
         EG4TONE->addListener(this);
 
         addAndMakeVisible(EG4SEMITONE = new Slider("EG4SEMITONE"));
-        EG4SEMITONE->setRange(0, 0.9, 0.1);
+        EG4SEMITONE->setRange(0, 11, 1);
         EG4SEMITONE->setSliderStyle(Slider::Rotary);
         EG4SEMITONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
         EG4SEMITONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
@@ -543,6 +557,7 @@ public:
 
         addAndMakeVisible(EG3G = new Slider("EG3G"));
         EG3G->setRange(0, 10, 0);
+        EG3G->setValue(5);
         EG3G->setSliderStyle(Slider::Rotary);
         EG3G->setTextBoxStyle(Slider::NoTextBox, false, 80, 20);
         EG3G->addListener(this);
@@ -556,7 +571,7 @@ public:
         EG3TONE->addListener(this);
 
         addAndMakeVisible(EG3SEMITONE = new Slider("EG3SEMITONE"));
-        EG3SEMITONE->setRange(0, 0.9, 0.1);
+        EG3SEMITONE->setRange(0, 11, 1);
         EG3SEMITONE->setSliderStyle(Slider::Rotary);
         EG3SEMITONE->setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
         EG3SEMITONE->setColour(Slider::textBoxBackgroundColourId, Colour(0x00000000));
@@ -1044,13 +1059,13 @@ private:
         else if (sliderThatWasMoved == EG2TONE)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setAngle(EG2TONE->getValue(), EG2SEMITONE->getValue(), 1);
+                voices[i]->setAngle(EG2TONE->getValue(), EG2SEMITONE->getValue() / 12, 1);
             }
         }
         else if (sliderThatWasMoved == EG2SEMITONE)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setAngle(EG2TONE->getValue(), EG2SEMITONE->getValue(), 1);
+                voices[i]->setAngle(EG2TONE->getValue(), EG2SEMITONE->getValue() / 12, 1);
             }
         }
         else if (sliderThatWasMoved == EG1A)
@@ -1086,13 +1101,13 @@ private:
         else if (sliderThatWasMoved == EG1TONE)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setAngle(EG1TONE->getValue(), EG1SEMITONE->getValue(), 0);
+                voices[i]->setAngle(EG1TONE->getValue(), EG1SEMITONE->getValue()/12, 0);
             }
         }
         else if (sliderThatWasMoved == EG1SEMITONE)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setAngle(EG1TONE->getValue(), EG1SEMITONE->getValue(), 0);
+                voices[i]->setAngle(EG1TONE->getValue(), EG1SEMITONE->getValue()/12, 0);
             }
         }
         else if (sliderThatWasMoved == EG4A)
@@ -1128,13 +1143,13 @@ private:
         else if (sliderThatWasMoved == EG4TONE)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setAngle(EG4TONE->getValue(), EG4SEMITONE->getValue(), 3);
+                voices[i]->setAngle(EG4TONE->getValue(), EG4SEMITONE->getValue() / 12, 3);
             }
         }
         else if (sliderThatWasMoved == EG4SEMITONE)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setAngle(EG4TONE->getValue(), EG4SEMITONE->getValue(), 3);
+                voices[i]->setAngle(EG4TONE->getValue(), EG4SEMITONE->getValue() / 12, 3);
             }
         }
         else if (sliderThatWasMoved == EG3A)
@@ -1170,13 +1185,13 @@ private:
         else if (sliderThatWasMoved == EG3TONE)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setAngle(EG3TONE->getValue(), EG3SEMITONE->getValue(), 2);
+                voices[i]->setAngle(EG3TONE->getValue(), EG3SEMITONE->getValue() / 12, 2);
             }
         }
         else if (sliderThatWasMoved == EG3SEMITONE)
         {
             for (unsigned int i = 0; i<4; i++) {
-                voices[i]->setAngle(EG3TONE->getValue(), EG3SEMITONE->getValue(), 2);
+                voices[i]->setAngle(EG3TONE->getValue(), EG3SEMITONE->getValue() / 12, 2);
             }
         }
         else if (sliderThatWasMoved == EG_ON_OFF) {
